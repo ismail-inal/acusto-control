@@ -9,7 +9,7 @@ ilk deger x yani 1. motor sonraki deger y yani 3. motor. vertexin 1. degerleri 2
 * kaydetmek istediginiz dosya adini config.json da DIR girin 
 * DX ve DY degerleri x ve y de 1 ekran kayacak sekilde ayarlanmali
 * AXES motorlarin koordinatlarla iliskisini belirler. PI da kablolarin yeri degismedikce ayni.
-* KERNEl_SIZE ise hucreyi iceren goruntunun piksel boyutlaridir.
+* KERNEL_SIZE ise hucreyi iceren goruntunun piksel boyutlaridir.
 
 
 
