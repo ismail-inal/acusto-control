@@ -1,0 +1,16 @@
+{
+    "CONTROLLERNAME": "C-884.DB",
+    "STAGES": ["M-126.PD2", "M-126.PD2", "M-126.PD2", "NOSTAGE"],
+    "REFMODES": ["FNL", "FRF"],
+    "SERIALNUM": "0000000000",
+    "DY": 1.0,
+    "DX": 1.0,
+    "VERTEX": {
+        "0,0": [2.0, 6.0],
+        "1,1": [14.0, 14.0]
+    },
+    "AXES": {"x": 1, "y": 3, "z": 2},
+    "DIR": "asdf",
+    "KERNEL_SIZE": [512, 512],
+    "EXPOSURE": 40
+}
