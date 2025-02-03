@@ -23,6 +23,8 @@ def capture_single_image(camera):
                 
                 # Convert the grayscale image to np.ndarray
                 image_array = grayscale_image.Array
+
+                image.Release()
                 
                 return image_array
             
