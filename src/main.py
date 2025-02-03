@@ -88,10 +88,10 @@ def main():
 
             print(f"Detected {len(circles)} circles.")
 
-            frame_dir = os.path.join(output_dir, f"position({target_x},{target_y})_cell{idx}")
-            os.makedirs(frame_dir, exist_ok=True)  # Directory is created only if circles are detected
 
             for idx, circle in enumerate(circles):
+                frame_dir = os.path.join(output_dir, f"position({target_x},{target_y})_cell{idx}")
+                os.makedirs(frame_dir, exist_ok=True)  # Directory is created only if circles are detected
                 try:
                     x_c, y_c, r_c = circle
                     print(f"\nProcessing Circle {idx}: Center=({x_c}, {y_c}), Radius={r_c}")
@@ -123,7 +123,7 @@ def main():
                           f"OffsetX={camera.OffsetX.Value}, OffsetY={camera.OffsetY.Value}")
 
                     print("Performing autofocus...")
-                    fcs.move_to_focus(pidevice, camera, config)
+                    fcs.move_to_focus(pidevice, camera, config, (x_c, y_c, r_c))
 
                     print("Starting image capture...")
                     camera.StartGrabbingMax(10)  # Grabbing 10 images

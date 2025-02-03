@@ -7,7 +7,7 @@ import lib.cnf as cnf
 
 
 
-def move_to_focus(pidevice, camera, config, (x, y, r),  dz=0.005):
+def move_to_focus(pidevice, camera, config, coords,  dz=0.005):
     """
     Function to find the sharpest image by moving the camera along the z-axis 
     and calculating the sharpness based on edge detection (Canny).
@@ -21,6 +21,8 @@ def move_to_focus(pidevice, camera, config, (x, y, r),  dz=0.005):
     Returns:
     - best_focus: The z-axis position where the sharpest image was found.
     """
+
+    x, y, r = coords
     sharpness_scores = []
     step_nums = np.arange(-5, 6)  # Step range from -10 to 10, inclusive
 
@@ -35,7 +37,7 @@ def move_to_focus(pidevice, camera, config, (x, y, r),  dz=0.005):
 
         # Capture the image at the current z position
         img = capture_single_image(camera)
-        isolated_img = isolate_image(img, x, y, r)
+        isolated_img = isolate_circle(img, x, y, r)
         
         
         # Apply Canny edge detection to find sharpness
@@ -52,10 +54,7 @@ def move_to_focus(pidevice, camera, config, (x, y, r),  dz=0.005):
 
 
 def isolate_circle(image: np.ndarray, x, y, r):
-    mask = np.zeroes_like(image, dtype=np.uint8)
+    mask = np.zeros_like(image, dtype=np.uint8)
     cv2.circle(mask, (x, y), int(r*1.3), (1, 1, 1), -1)
     isolated_image = mask * image
     return isolated_image
-
-
-
