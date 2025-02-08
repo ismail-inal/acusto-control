@@ -3,7 +3,6 @@ from pypylon import genicam
 import os
 import lib.cmr as cmr
 import lib.mtr as mtr
-import lib.fcs as fcs
 import lib.cnf as cnf
 
 
