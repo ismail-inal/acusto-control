@@ -1,22 +1,83 @@
-import json
+import tomllib
+from dataclasses import dataclass
+from typing import List
 
-def load_config(config_path="config.json"):
-    """
-    Load configuration from a JSON file and compute additional parameters.
-    
-    Parameters:
-    - config_path: Path to the JSON configuration file (default: "config.json").
-    
-    Returns:
-    - config: Dictionary containing configuration parameters.
-    """
-    with open(config_path, "r") as file:
-        config = json.load(file)
-    
-    # Compute STEP_NUM based on VERTEX and DX, DY values
-    config["STEP_NUM"] = [
-        int(abs(config["VERTEX"]["0,0"][0] - config["VERTEX"]["1,1"][0]) // config["DX"]),
-        int(abs(config["VERTEX"]["0,0"][1] - config["VERTEX"]["1,1"][1]) // config["DY"]),
-    ]
-    
-    return config
+
+@dataclass
+class CameraConfig:
+    exposure: int
+    kernel_size: List[int]
+
+
+@dataclass
+class MotorConfig:
+    controllername: str
+    stages: List[str]
+    refmodes: List[str]
+    serialnum: str
+
+
+@dataclass
+class AxesConfig:
+    x: int
+    y: int
+    z: int
+
+
+@dataclass
+class VertexConfig:
+    pt1: List[float]
+    pt2: List[float]
+
+
+@dataclass
+class MovementConfig:
+    dx: float
+    dy: float
+    num_steps_x: int
+    num_steps_y: int
+
+
+@dataclass
+class FileConfig:
+    save_dir: str
+    model_path: str
+
+
+@dataclass
+class Config:
+    camera: CameraConfig
+    motor: MotorConfig
+    axes: AxesConfig
+    vertex: VertexConfig
+    movement: MovementConfig
+    file: FileConfig
+
+    @classmethod
+    def from_dict(cls, config_dict: dict) -> "Config":
+        return cls(
+            camera=CameraConfig(**config_dict["CAMERA"]),
+            motor=MotorConfig(**config_dict["MOTOR"]),
+            axes=AxesConfig(**config_dict["AXES"]),
+            vertex=VertexConfig(**config_dict["VERTEX"]),
+            movement=MovementConfig(**config_dict["MOVEMENT"]),
+            file=FileConfig(**config_dict["FILE"]),
+        )
+
+
+def load_config(config_path="config.toml"):
+    with open(config_path, "rb") as file:
+        config = tomllib.load(file)
+
+    config["MOVEMENT"]["num_steps_x"] = int(
+        abs(config["VERTEX"]["pt1"][0] - config["VERTEX"]["pt2"][0])
+        // config["MOVEMENT"]["dx"]
+    )
+
+    config["MOVEMENT"]["num_steps_y"] = int(
+        abs(config["VERTEX"]["pt1"][1] - config["VERTEX"]["pt2"][1])
+        // config["MOVEMENT"]["dy"]
+    )
+
+    return Config.from_dict(config)
+

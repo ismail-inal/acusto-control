@@ -1,0 +1,26 @@
+[CAMERA]
+exposure = 40
+kernel_size = [512, 512]
+
+[MOTOR]
+controllername = "C-884.DB"
+stages = ["M-126.PD2", "M-126.PD2", "M-126.PD2", "NOSTAGE"]
+refmodes = ["FNL", "FRF"]
+serialnum = "0000000000"
+
+[AXES]
+x = 1
+y = 3
+z = 2
+
+[VERTEX]
+pt1 = [2.0, 6.0]
+pt2 = [14.0, 14.0]
+
+[MOVEMENT]
+dx = 0.3
+dy = 0.5
+
+[FILE]
+save_dir = "frames"
+model_path = "models/bead.pt"
