@@ -1,35 +1,27 @@
-from pipython import GCSDevice, pitools
-from pypylon import pylon, genicam
+from pipython import pitools
+from pypylon import genicam
 import os
 import lib.cmr as cmr
-import lib.circle_detection as cdt
 import lib.mtr as mtr
 import lib.fcs as fcs
 import lib.cnf as cnf
-
-
-def adjust_offset(value, increment):
-    """
-    Adjusts the given value down to the nearest multiple of the increment.
-    """
-    return value - (value % increment)
 
 
 def main():
     print("Loading configuration...")
     config = cnf.load_config("config.json")
 
-    print("Connecting to motion controller...")
+    print("Connecting to the motor controller...")
     pidevice = mtr.connect_pi(
-        config["CONTROLLERNAME"],
-        config["SERIALNUM"],
-        config["STAGES"],
-        config["REFMODES"],
+        config.motor.controllername,
+        config.motor.serialnum,
+        config.motor.stages,
+        config.motor.refmodes,
     )
 
-    print("Connecting to camera...")
-    camera = cmr.connect_camera(500, config["EXPOSURE"])
-    output_dir = config["DIR"]
+    print("Connecting to the camera...")
+    camera = cmr.connect_camera(500, config.camera.exposure)
+    output_dir = config.file.save_dir
 
     os.makedirs(output_dir, exist_ok=True)
 
@@ -38,54 +30,28 @@ def main():
     print(f"Original Camera Resolution: {org_width}x{org_height}")
 
     print("Starting scanning process...")
-    for y in range(config["STEP_NUM"][1] + 1):
+
+    for y in range(config.movement.num_steps_y + 1):
         for x in (
-            range(config["STEP_NUM"][0] + 1)
+            range(config.movement.num_steps_x + 1)
             if y % 2 == 0
-            else range(config["STEP_NUM"][0] + 1)[::-1]
+            else range(config.movement.num_steps_x + 1)[::-1]
         ):
-            target_x = config["VERTEX"]["0,0"][0] + x * config["DX"]
-            target_y = config["VERTEX"]["0,0"][1] + y * config["DY"]
+            target_x = config.vertex.pt1[0] + x * config.movement.dx
+            target_y = config.vertex.pt1[1] + y * config.movement.dy
             print(f"\nMoving to position: X={target_x}, Y={target_y}")
 
             try:
-                pidevice.MOV(
-                    [config["AXES"]["x"], config["AXES"]["y"]], [target_x, target_y]
-                )
-                pitools.waitontarget(
-                    pidevice, axes=(config["AXES"]["x"], config["AXES"]["y"])
-                )
+                pidevice.MOV([config.axes.x, config.axes.y], [target_x, target_y])
+                pitools.waitontarget(pidevice, axes=(config.axes.x, config.axes.y))
                 print("Stage movement complete.")
             except Exception as e:
                 print(f"Error during stage movement: {e}")
-                continue  # Skip to the next position
+                continue
 
-            try:
-                print("Starting image capture...")
-                camera.StartGrabbingMax(1)  # Grabbing 10 images
-
-                grab_idx = 0  # Initialize grab index
-                while camera.IsGrabbing():
-                    with camera.RetrieveResult(2000) as result:
-                        if result.GrabSucceeded():
-                            img = pylon.PylonImage()
-                            img.AttachGrabResultBuffer(result)
-                            # Include grab index to ensure unique filenames
-                            filename = os.path.join(
-                                output_dir, f"position({target_x},{target_y})"
-                            )
-                            img.Save(pylon.ImageFileFormat_Tiff, filename)
-                            img.Release()
-                            print(f"Saved image: {filename}")
-                            grab_idx += 1  # Increment grab index
-                        else:
-                            print(f"Grab failed with error: {result.ErrorCode}")
-
-                camera.StopGrabbing()
-                print("Image capture complete.")
-
-            except Exception as e:
-                print(f"Error processing pos ({x}, {y}): {e}")
+            frame_dir = os.path.join(output_dir, f"position({target_x},{target_y})")
+            cmr.save_images(camera, 10, frame_dir)
+            print("Image capture complete.")
 
     print("Closing connections...")
     try:
@@ -99,6 +65,10 @@ def main():
         print(f"Error closing camera connection: {e}")
 
     print("Process complete.")
+
+
+def adjust_offset(value, increment):
+    return value - (value % increment)
 
 
 if __name__ == "__main__":
