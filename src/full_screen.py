@@ -1,9 +1,11 @@
+import os
+
 from pipython import pitools
 from pypylon import genicam
-import os
+
 import lib.cmr as cmr
-import lib.mtr as mtr
 import lib.cnf as cnf
+import lib.mtr as mtr
 
 
 def main():

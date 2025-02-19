@@ -1,16 +1,19 @@
+import os
+
+import torch
 from pipython import pitools
 from pypylon import genicam
-import os
-from ultralytics import YOLO
+
 import lib.cmr as cmr
-import lib.mtr as mtr
-import lib.fcs as fcs
 import lib.cnf as cnf
+import lib.fcs as fcs
+import lib.mtr as mtr
+from lib.circle_detection import get_bounding_boxes
 
 
 def main():
     print("Loading configuration...")
-    config = cnf.load_config("config.json")
+    config = cnf.load_config("config.toml")
 
     print("Connecting to the motor controller...")
     pidevice = mtr.connect_pi(
@@ -22,9 +25,16 @@ def main():
 
     print("Connecting to the camera...")
     camera = cmr.connect_camera(500, config.camera.exposure)
-    output_dir = config.file.save_dir
+    os.makedirs(config.file.save_dir, exist_ok=True)
 
-    os.makedirs(output_dir, exist_ok=True)
+    print("Loading the yolov7 model...")
+    model = torch.hub.load(
+        "WongKinYiu/yolov7",
+        "custom",
+        config.file.model_path,
+        force_reload=True,
+        trust_repo=True,
+    )
 
     org_width = camera.Width.Value
     org_height = camera.Height.Value
@@ -50,8 +60,6 @@ def main():
 
     print("Starting scanning process...")
 
-    model = YOLO(config.file.model_path)
-
     for y in range(config.movement.num_steps_y + 1):
         for x in (
             range(config.movement.num_steps_x + 1)
@@ -71,23 +79,22 @@ def main():
                 continue
 
             print("Capturing original image...")
+            temp_dir = os.path.join(config.file.save_dir, "temp")
             try:
-                org_image = cmr.return_single_image(camera)
+                cmr.save_images(camera, 1, temp_dir)
             except Exception as e:
                 print(f"Error capturing image: {e}")
                 continue
 
             print("Detecting circles...")
-            boxes = model(org_image).xyxy[0]
-            if boxes is None or len(boxes) == 0:
-                print("No circles detected, skipping this position.\n")
-                continue
-            boxes = boxes.cpu().numpy()
+            temp_file = os.path.join(temp_dir, "1.tiff")
+            boxes = get_bounding_boxes(model, temp_file)
+
             print(f"Detected {len(boxes)} circles.")
 
             for idx, box in enumerate(boxes):
                 frame_dir = os.path.join(
-                    output_dir, f"position({target_x},{target_y})_cell{idx}"
+                    config.file.save_dir, f"position({target_x},{target_y})_cell{idx}"
                 )
 
                 try:

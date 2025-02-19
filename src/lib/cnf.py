@@ -1,6 +1,7 @@
-import tomllib
 from dataclasses import dataclass
 from typing import List
+
+import tomllib
 
 
 @dataclass
@@ -80,4 +81,3 @@ def load_config(config_path="config.toml"):
     )
 
     return Config.from_dict(config)
-

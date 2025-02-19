@@ -1,52 +1,45 @@
-from pipython import pitools
+from typing import List
+
 import cv2
 import numpy as np
-from lib.cmr import capture_single_image
+from pipython import GCSDevice, pitools
+from pypylon import pylon
+
+from lib.cmr import return_single_image
+from lib.cnf import Config
 
 
-def move_to_focus(pidevice, camera, config, coords, dz=0.005):
-    """
-    Function to find the sharpest image by moving the camera along the z-axis
-    and calculating the sharpness based on edge detection (Canny).
-
-    Parameters:
-    - pidevice: The device object to control the stage.
-    - camera: The camera object to capture images.
-    - config: Configuration dictionary loaded from JSON.
-    - dz: The step size for movement along the z-axis (default is 0.005).
-
-    Returns:
-    - Nothing
-    """
-
+def move_to_focus(
+    pidevice: GCSDevice,
+    camera: pylon.InstantCamera,
+    config: Config,
+    coords: List[int],
+    dz: float = 0.005,
+) -> None:
     x0, y0, x1, y1 = coords
     sharpness_scores = []
-    step_nums = np.arange(-10, 11)  # Step range from -10 to 10, inclusive
+    step_nums = np.arange(-10, 11)
 
-    # Get current z position
-    current_z = pidevice.qPOS(config["AXES"]["z"])[config["AXES"]["z"]]
+    current_z = pidevice.qPOS(config.axes.z)[config.axes.z]
 
     for step_num in step_nums:
-        # Move the stage along the z-axis
         target_z = current_z + dz * step_num
-        pidevice.MOV(config["AXES"]["z"], target_z)
-        pitools.waitontarget(pidevice, config["AXES"]["z"])
+        pidevice.MOV(config.axes.z, target_z)
+        pitools.waitontarget(pidevice, config.axes.z)
 
-        # Capture the image at the current z position
-        img = capture_single_image(camera)
+        img = return_single_image(camera)
         isolated_img = isolate_circle(img, x0, y0, x1, y1)
 
-        # Apply Canny edge detection to find sharpness
+        # canny edge detection
         edges = cv2.Canny(isolated_img, threshold1=100, threshold2=200)
-        sharpness = np.sum(edges)  # Sum of edge pixel intensities
+        sharpness = np.sum(edges)
         sharpness_scores.append(sharpness)
 
-    # Find the index of the maximum sharpness score
     best_index = np.argmax(sharpness_scores)
     best_focus = current_z + dz * step_nums[best_index]
 
-    pidevice.MOV(config["AXES"]["z"], best_focus)  # Move to the best focus position
-    pitools.waitontarget(pidevice, config["AXES"]["z"])
+    pidevice.MOV(config.axes.z, best_focus)
+    pitools.waitontarget(pidevice, config.axes.z)
 
 
 def isolate_circle(image: np.ndarray, x0, y0, x1, y1):
