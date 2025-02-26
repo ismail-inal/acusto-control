@@ -17,6 +17,9 @@ def move_to_focus(
     dz: float = 0.005,
 ) -> None:
     x0, y0, x1, y1 = coords
+    x0, y0 = int(x0 - 30), int(y0 - 30)
+    x1, y1 = int(x1 + 30), int(y1 + 30)
+
     sharpness_scores = []
     step_nums = np.arange(-10, 11)
 
@@ -28,7 +31,7 @@ def move_to_focus(
         pitools.waitontarget(pidevice, config.axes.z)
 
         img = return_single_image(camera)
-        isolated_img = isolate_circle(img, x0, y0, x1, y1)
+        isolated_img = img[y0:y1, x0:x1]
 
         # canny edge detection
         edges = cv2.Canny(isolated_img, threshold1=100, threshold2=200)
@@ -40,10 +43,3 @@ def move_to_focus(
 
     pidevice.MOV(config.axes.z, best_focus)
     pitools.waitontarget(pidevice, config.axes.z)
-
-
-def isolate_circle(image: np.ndarray, x0, y0, x1, y1):
-    mask = np.zeros_like(image, dtype=np.uint8)
-    cv2.rectangle(mask, (x0, y0), (x1, y1), (1, 1, 1), -1)
-    isolated_image = mask * image
-    return isolated_image

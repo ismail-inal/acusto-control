@@ -3,6 +3,7 @@ import os
 import torch
 from pipython import pitools
 from pypylon import genicam
+from typing import cast
 
 import lib.cmr as cmr
 import lib.cnf as cnf
@@ -35,6 +36,7 @@ def main():
         force_reload=True,
         trust_repo=True,
     )
+    model = cast(torch.nn.Module, model)
 
     org_width = camera.Width.Value
     org_height = camera.Height.Value
@@ -90,67 +92,75 @@ def main():
             temp_file = os.path.join(temp_dir, "1.tiff")
             boxes = get_bounding_boxes(model, temp_file)
 
-            print(f"Detected {len(boxes)} circles.")
+            if boxes is None:
+                continue
+            else:
+                print(f"Detected {len(boxes)} circles.")
 
-            for idx, box in enumerate(boxes):
-                frame_dir = os.path.join(
-                    config.file.save_dir, f"position({target_x},{target_y})_cell{idx}"
-                )
-
-                try:
-                    x_min, y_min, x_max, y_max = box[:4]
-                    print(
-                        f"\nProcessing Circle {idx}: top left corner ({x_min}, {y_min}), bottom right corner({x_max}, {y_max})"
+                for idx, box in enumerate(boxes):
+                    frame_dir = os.path.join(
+                        config.file.save_dir,
+                        f"position({target_x},{target_y})_cell{idx}",
                     )
 
-                    # NOTE: if you want a specific size uncomment this and comment the other paragraph
-                    # Adjusting camera region of interest
-                    # camera.Width.Value = config.camera.kernel_size[0]
-                    # camera.Height.Value = config.camera.kernel_size[1]
-
-                    camera.Width.Value = x_max - x_min
-                    camera.Height.Value = y_max - y_min
-
-                    raw_offset_x = int(max(0, x_min))
-                    raw_offset_y = int(max(0, y_min))
-
-                    adjusted_offset_x = adjust_offset(raw_offset_x, offset_x_increment)
-                    adjusted_offset_y = adjust_offset(raw_offset_y, offset_y_increment)
-
-                    max_offset_x = camera.OffsetX.GetMax()
-                    max_offset_y = camera.OffsetY.GetMax()
-
-                    adjusted_offset_x = min(adjusted_offset_x, max_offset_x)
-                    adjusted_offset_y = min(adjusted_offset_y, max_offset_y)
-
-                    camera.OffsetX.Value = adjusted_offset_x
-                    camera.OffsetY.Value = adjusted_offset_y
-
-                    print(
-                        f"Adjusted Camera ROI: Width={camera.Width.Value}, Height={camera.Height.Value}, "
-                        f"OffsetX={camera.OffsetX.Value}, OffsetY={camera.OffsetY.Value}"
-                    )
-
-                    print("Performing autofocus...")
-                    fcs.move_to_focus(
-                        pidevice, camera, config, (x_min, y_min, x_max, y_max)
-                    )
-
-                    print("Starting image capture...")
-                    cmr.save_images(camera, 10, frame_dir)
-                    print("Image capture complete.")
-
-                except Exception as e:
-                    print(f"Error processing circle {idx}: {e}")
-                finally:
                     try:
-                        camera.OffsetX.Value = 0
-                        camera.OffsetY.Value = 0
-                        camera.Width.Value = org_width
-                        camera.Height.Value = org_height
-                        print("Camera settings reset.")
-                    except genicam.GenericException as e:
-                        print(f"Error resetting camera settings: {e}")
+                        x_min, y_min, x_max, y_max = box[:4]
+                        print(
+                            f"\nProcessing Circle {idx}: top left corner ({x_min}, {y_min}), bottom right corner({x_max}, {y_max})"
+                        )
+
+                        # NOTE: if you want a specific size uncomment this and comment the other paragraph
+                        # Adjusting camera region of interest
+                        # camera.Width.Value = config.camera.kernel_size[0]
+                        # camera.Height.Value = config.camera.kernel_size[1]
+
+                        camera.Width.Value = x_max - x_min
+                        camera.Height.Value = y_max - y_min
+
+                        raw_offset_x = int(max(0, x_min))
+                        raw_offset_y = int(max(0, y_min))
+
+                        adjusted_offset_x = adjust_offset(
+                            raw_offset_x, offset_x_increment
+                        )
+                        adjusted_offset_y = adjust_offset(
+                            raw_offset_y, offset_y_increment
+                        )
+
+                        max_offset_x = camera.OffsetX.GetMax()
+                        max_offset_y = camera.OffsetY.GetMax()
+
+                        adjusted_offset_x = min(adjusted_offset_x, max_offset_x)
+                        adjusted_offset_y = min(adjusted_offset_y, max_offset_y)
+
+                        camera.OffsetX.Value = adjusted_offset_x
+                        camera.OffsetY.Value = adjusted_offset_y
+
+                        print(
+                            f"Adjusted Camera ROI: Width={camera.Width.Value}, Height={camera.Height.Value}, "
+                            f"OffsetX={camera.OffsetX.Value}, OffsetY={camera.OffsetY.Value}"
+                        )
+
+                        print("Performing autofocus...")
+                        fcs.move_to_focus(
+                            pidevice, camera, config, [x_min, y_min, x_max, y_max]
+                        )
+
+                        print("Starting image capture...")
+                        cmr.save_images(camera, 10, frame_dir)
+                        print("Image capture complete.")
+
+                    except Exception as e:
+                        print(f"Error processing circle {idx}: {e}")
+                    finally:
+                        try:
+                            camera.OffsetX.Value = 0
+                            camera.OffsetY.Value = 0
+                            camera.Width.Value = org_width
+                            camera.Height.Value = org_height
+                            print("Camera settings reset.")
+                        except genicam.GenericException as e:
+                            print(f"Error resetting camera settings: {e}")
 
     print("Closing connections...")
     try:
