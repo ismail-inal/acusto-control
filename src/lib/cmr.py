@@ -45,7 +45,7 @@ def save_images(camera: pylon.InstantCamera, num: int, file_path: str) -> None:
                 img.Save(pylon.ImageFileFormat_Tiff, filename)
                 img.Release()
                 print(f"Saved image: {filename}")
-                grab_idx += 1  # Increment grab index
+                grab_idx += 1
             else:
                 print(f"Grab failed with error: {result.ErrorCode}")
 

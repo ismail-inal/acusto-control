@@ -101,6 +101,8 @@ def main():
                     print(
                         f"\nProcessing Circle {idx}: top left corner ({x_min}, {y_min}), bottom right corner({x_max}, {y_max})"
                     )
+                    x_min, y_min = x_min - 30, y_min - 30
+                    x_max, y_max = x_max + 30, y_max + 30
 
                     # NOTE: if you want a specific size uncomment this and comment the other paragraph
                     # Adjusting camera region of interest
