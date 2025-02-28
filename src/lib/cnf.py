@@ -6,8 +6,9 @@ import tomllib
 
 @dataclass
 class CameraConfig:
-    exposure: int
+    exposure: float
     kernel_size: List[int]
+    fps: float
 
 
 @dataclass

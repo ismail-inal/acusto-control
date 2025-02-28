@@ -4,11 +4,15 @@ from numpy import ndarray
 from pypylon import pylon
 
 
-def connect_camera(buffer_val: int, expre: int) -> pylon.InstantCamera:
+def connect_camera(
+    buffer_val: int, exposure: float, frame_rate: float
+) -> pylon.InstantCamera:
     camera = pylon.InstantCamera(pylon.TlFactory.GetInstance().CreateFirstDevice())
     camera.Open()
     camera.MaxNumBuffer.Value = buffer_val
-    camera.ExpreTime.Value = expre
+    camera.ExposureTime.Value = exposure
+    camera.AcquisitionFrameRateEnable.Value = True
+    camera.AcquisitionFrameRate.Value = frame_rate
     return camera
 
 
