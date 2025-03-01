@@ -51,7 +51,7 @@ def main():
                         img.AttachGrabResultBuffer(result)
                         filename = os.path.join(
                             config.file.save_dir,
-                            f"position({target_x},{target_y}).tiff",
+                            f"position({target_x:.2f},{target_y:.2f}).tiff",
                         )
                         img.Save(pylon.ImageFileFormat_Tiff, filename)
                         img.Release()
