@@ -173,7 +173,7 @@ def main():
 def adjust(value, increment, max_value):
     raw_value = int(max(0, value))
     adjusted_value = raw_value - (raw_value % increment)
-    final_value = max(adjusted_value, max_value)
+    final_value = min(adjusted_value, max_value)
     return final_value
 
 
