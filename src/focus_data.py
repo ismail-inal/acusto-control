@@ -1,3 +1,5 @@
+import os
+
 from pipython import pitools
 from pypylon import genicam
 
@@ -41,8 +43,12 @@ def main():
                 print(f"Error during stage movement: {e}")
                 continue
 
+            output_dir = os.path.join(
+                config.file.save_dir,
+                f"position({target_x:.2f},{target_y:.2f})",
+            )
             print("Starting Image capture.")
-            fcs.capture_focus_range(pidevice, camera, config, config.file.save_dir)
+            fcs.capture_focus_range(pidevice, camera, config, output_dir)
             print("Image capture complete.")
 
     print("Closing connections...")
