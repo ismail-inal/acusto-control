@@ -81,7 +81,7 @@ def main():
                 continue
 
             print("Detecting circles...")
-            temp_file = os.path.join(temp_dir, "1.tiff")
+            temp_file = os.path.join(temp_dir, "0.tiff")
             boxes = get_bounding_boxes(model, temp_file, 30)
 
             if boxes is None:
