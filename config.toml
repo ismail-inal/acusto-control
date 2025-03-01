@@ -2,7 +2,6 @@
 exposure = 40.0
 kernel_size = [512, 512]
 fps = 50.0
-max_offset = [2064, 1544]
 
 [MOTOR]
 controllername = "C-884.DB"

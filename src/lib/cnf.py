@@ -9,7 +9,6 @@ class CameraConfig:
     exposure: float
     kernel_size: List[int]
     fps: float
-    max_offset: List[int]
 
 
 @dataclass
