@@ -1,6 +1,5 @@
 import os
 
-import numpy as np
 from pipython import pitools
 from pypylon import genicam
 from ultralytics import YOLO
