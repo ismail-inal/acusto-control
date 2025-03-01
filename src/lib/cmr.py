@@ -30,12 +30,13 @@ def return_single_image(camera: pylon.InstantCamera) -> ndarray:
     return image_array
 
 
-def save_images(camera: pylon.InstantCamera, num: int, file_path: str) -> None:
+def save_images(
+    camera: pylon.InstantCamera, num: int, file_path: str, grab_idx: int = 0
+) -> None:
     makedirs(file_path, exist_ok=True)
 
     camera.StartGrabbingMax(num)
 
-    grab_idx = 0
     while camera.IsGrabbing():
         with camera.RetrieveResult(2000) as result:
             if result.GrabSucceeded():

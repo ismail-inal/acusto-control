@@ -2,6 +2,7 @@
 exposure = 40.0
 kernel_size = [512, 512]
 fps = 50.0
+num_of_images = 200
 
 [MOTOR]
 controllername = "C-884.DB"
@@ -21,6 +22,8 @@ pt2 = [14.0, 14.0]
 [MOVEMENT]
 dx = 0.3
 dy = 0.5
+dz = 0.005
+max_step_z = 10
 
 [FILE]
 save_dir = "frames"

@@ -1,5 +1,6 @@
 import os
 
+import numpy as np
 from pipython import pitools
 from pypylon import genicam
 from ultralytics import YOLO
@@ -7,9 +8,8 @@ from ultralytics import YOLO
 import lib.cmr as cmr
 import lib.cnf as cnf
 import lib.mtr as mtr
+import lib.fcs as fcs
 from lib.cell_detection import get_bounding_boxes
-
-# import lib.fcs as fcs
 
 
 def main():
@@ -104,10 +104,6 @@ def main():
                 )
 
                 try:
-                    # NOTE: if you want a specific size uncomment this and comment the other paragraph
-                    # camera.Width.Value = config.camera.kernel_size[0]
-                    # camera.Height.Value = config.camera.kernel_size[1]
-
                     adjusted_width = adjust(
                         abs(x_max - x_min), width_increment, max_width
                     )
@@ -136,12 +132,13 @@ def main():
                         f"OffsetX={camera.OffsetX.Value}, OffsetY={camera.OffsetY.Value}"
                     )
 
-                    # print("Performing autofocus...")
-                    # focus_dir = os.path.join(temp_dir, "focus")
-                    # fcs.move_to_focus(pidevice, camera, config, focus_dir)
-
                     print("Starting image capture...")
-                    cmr.save_images(camera, config.camera.num_of_images, frame_dir)
+                    fcs.move_to_focus(
+                        pidevice,
+                        camera,
+                        config,
+                        frame_dir,
+                    )
                     print("Image capture complete.")
 
                 except Exception as e:

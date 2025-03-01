@@ -9,6 +9,7 @@ class CameraConfig:
     exposure: float
     kernel_size: List[int]
     fps: float
+    num_of_images: int
 
 
 @dataclass
@@ -36,6 +37,8 @@ class VertexConfig:
 class MovementConfig:
     dx: float
     dy: float
+    dz: float
+    max_step_z: int
     num_steps_x: int
     num_steps_y: int
 
