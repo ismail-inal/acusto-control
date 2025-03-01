@@ -111,20 +111,14 @@ def main():
                     # camera.Width.Value = config.camera.kernel_size[0]
                     # camera.Height.Value = config.camera.kernel_size[1]
 
-                    raw_width = int(max(0, x_max - x_min))
-                    raw_height = int(max(0, y_max - y_min))
-                    raw_offset_x = int(max(0, x_min))
-                    raw_offset_y = int(max(0, y_min))
-
-                    adjusted_offset_x = adjust(raw_offset_x, offset_x_increment)
-                    adjusted_offset_y = adjust(raw_offset_y, offset_y_increment)
-                    adjusted_width = adjust(raw_width, width_increment)
-                    adjusted_height = adjust(raw_height, height_increment)
-
-                    adjusted_offset_x = min(adjusted_offset_x, max_offset_x)
-                    adjusted_offset_y = min(adjusted_offset_y, max_offset_y)
-                    adjusted_width = min(adjusted_width, max_width)
-                    adjusted_height = min(adjusted_height, max_height)
+                    adjusted_width = adjust(
+                        abs(x_max - x_min), width_increment, max_width
+                    )
+                    adjusted_height = adjust(
+                        abs(y_max - y_min), height_increment, max_height
+                    )
+                    adjusted_offset_x = adjust(x_min, offset_x_increment, max_offset_x)
+                    adjusted_offset_y = adjust(y_min, offset_y_increment, max_offset_y)
 
                     camera.Width.Value = adjusted_width
                     camera.Height.Value = adjusted_height
@@ -171,8 +165,11 @@ def main():
     print("Process complete.")
 
 
-def adjust(value, increment):
-    return value - (value % increment)
+def adjust(value, increment, max_value):
+    raw_value = int(max(0, value))
+    adjusted_value = raw_value - (raw_value % increment)
+    final_value = max(adjusted_value, max_value)
+    return final_value
 
 
 if __name__ == "__main__":

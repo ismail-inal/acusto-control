@@ -1,7 +1,7 @@
 import os
 
 from pipython import pitools
-from pypylon import genicam
+from pypylon import genicam, pylon
 
 import lib.cmr as cmr
 import lib.cnf as cnf
@@ -21,17 +21,12 @@ def main():
     )
 
     print("Connecting to the camera...")
-    camera = cmr.connect_camera(500, config.camera.exposure)
+    camera = cmr.connect_camera(500, config.camera.exposure, config.camera.fps)
     output_dir = config.file.save_dir
 
     os.makedirs(output_dir, exist_ok=True)
 
-    org_width = camera.Width.Value
-    org_height = camera.Height.Value
-    print(f"Original Camera Resolution: {org_width}x{org_height}")
-
     print("Starting scanning process...")
-
     for y in range(config.movement.num_steps_y + 1):
         for x in (
             range(config.movement.num_steps_x + 1)
@@ -50,9 +45,23 @@ def main():
                 print(f"Error during stage movement: {e}")
                 continue
 
-            frame_dir = os.path.join(output_dir, f"position({target_x},{target_y})")
-            cmr.save_images(camera, 10, frame_dir)
-            print("Image capture complete.")
+            camera.StartGrabbingMax(1)
+            while camera.IsGrabbing():
+                with camera.RetrieveResult(2000) as result:
+                    if result.GrabSucceeded():
+                        img = pylon.PylonImage()
+                        img.AttachGrabResultBuffer(result)
+                        filename = os.path.join(
+                            output_dir, f"position({target_x},{target_y}).tiff"
+                        )
+                        img.Save(pylon.ImageFileFormat_Tiff, filename)
+                        img.Release()
+                        print(f"Saved image: {filename}")
+                    else:
+                        print(f"Grab failed with error: {result.ErrorCode}")
+
+        camera.StopGrabbing()
+        print("Image capture complete.")
 
     print("Closing connections...")
     try:
@@ -66,10 +75,6 @@ def main():
         print(f"Error closing camera connection: {e}")
 
     print("Process complete.")
-
-
-def adjust_offset(value, increment):
-    return value - (value % increment)
 
 
 if __name__ == "__main__":
