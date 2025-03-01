@@ -83,9 +83,10 @@ def main():
 
             print("Detecting circles...")
             temp_file = os.path.join(temp_dir, "1.tiff")
-            boxes = get_bounding_boxes(model, temp_file)
+            boxes = get_bounding_boxes(model, temp_file, 30)
 
             if boxes is None:
+                print("There are no circles detected. Skipping position...")
                 continue
 
             print(f"Detected {len(boxes)} circles.")
@@ -96,14 +97,12 @@ def main():
                     f"position({target_x},{target_y})_cell{idx}",
                 )
 
-                try:
-                    x_min, y_min, x_max, y_max = np.round(box[:4]).astype(int)
-                    print(
-                        f"\nProcessing Circle {idx}: top left corner ({x_min}, {y_min}), bottom right corner({x_max}, {y_max})"
-                    )
-                    x_min, y_min = x_min - 30, y_min - 30
-                    x_max, y_max = x_max + 30, y_max + 30
+                x_min, y_min, x_max, y_max = box
+                print(
+                    f"\nProcessing Circle {idx}: top left corner ({x_min}, {y_min}), bottom right corner({x_max}, {y_max})"
+                )
 
+                try:
                     # NOTE: if you want a specific size uncomment this and comment the other paragraph
                     # Adjusting camera region of interest
                     # camera.Width.Value = config.camera.kernel_size[0]
