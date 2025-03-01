@@ -39,6 +39,10 @@ def main():
         offset_y_increment = camera.OffsetY.GetInc()
         width_increment = camera.Width.GetInc()
         height_increment = camera.Height.GetInc()
+        max_offset_x = camera.OffsetX.GetMax()
+        max_offset_y = camera.OffsetY.GetMax()
+        max_width = camera.Width.GetMax()
+        max_height = camera.Height.GetMax()
 
         print(
             f"Width Increment: {width_increment}, Height Increment: {height_increment}"
@@ -107,21 +111,23 @@ def main():
                     # camera.Width.Value = config.camera.kernel_size[0]
                     # camera.Height.Value = config.camera.kernel_size[1]
 
-                    camera.Width.Value = x_max - x_min
-                    camera.Height.Value = y_max - y_min
-
+                    raw_width = int(max(0, x_max - x_min))
+                    raw_height = int(max(0, y_max - y_min))
                     raw_offset_x = int(max(0, x_min))
                     raw_offset_y = int(max(0, y_min))
 
-                    adjusted_offset_x = adjust_offset(raw_offset_x, offset_x_increment)
-                    adjusted_offset_y = adjust_offset(raw_offset_y, offset_y_increment)
-
-                    max_offset_x = camera.OffsetX.GetMax()
-                    max_offset_y = camera.OffsetY.GetMax()
+                    adjusted_offset_x = adjust(raw_offset_x, offset_x_increment)
+                    adjusted_offset_y = adjust(raw_offset_y, offset_y_increment)
+                    adjusted_width = adjust(raw_width, width_increment)
+                    adjusted_height = adjust(raw_height, height_increment)
 
                     adjusted_offset_x = min(adjusted_offset_x, max_offset_x)
                     adjusted_offset_y = min(adjusted_offset_y, max_offset_y)
+                    adjusted_width = min(adjusted_width, max_width)
+                    adjusted_height = min(adjusted_height, max_height)
 
+                    camera.Width.Value = adjusted_width
+                    camera.Height.Value = adjusted_height
                     camera.OffsetX.Value = adjusted_offset_x
                     camera.OffsetY.Value = adjusted_offset_y
 
@@ -130,10 +136,10 @@ def main():
                         f"OffsetX={camera.OffsetX.Value}, OffsetY={camera.OffsetY.Value}"
                     )
 
-                    print("Performing autofocus...")
-                    fcs.move_to_focus(
-                        pidevice, camera, config, [x_min, y_min, x_max, y_max]
-                    )
+                    # print("Performing autofocus...")
+                    # fcs.move_to_focus(
+                    #     pidevice, camera, config, [x_min, y_min, x_max, y_max]
+                    # )
 
                     print("Starting image capture...")
                     cmr.save_images(camera, 10, frame_dir)
@@ -165,7 +171,7 @@ def main():
     print("Process complete.")
 
 
-def adjust_offset(value, increment):
+def adjust(value, increment):
     return value - (value % increment)
 
 
