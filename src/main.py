@@ -6,7 +6,8 @@ from ultralytics import YOLO
 
 import lib.cmr as cmr
 import lib.cnf as cnf
-import lib.fcs as fcs
+
+# import lib.fcs as fcs
 import lib.mtr as mtr
 from lib.circle_detection import get_bounding_boxes
 
@@ -50,8 +51,13 @@ def main():
         print(
             f"OffsetX Increment: {offset_x_increment}, OffsetY Increment: {offset_y_increment}"
         )
+
+        print(f"Maximum Offset X: {max_offset_x}, Maximum Offset Y: {max_offset_y}")
+
+        print(f"Maximum Width: {max_width}, Maximum Height: {max_height}")
+
     except genicam.GenericException as e:
-        print(f"Error retrieving increment values: {e}")
+        print(f"Error retrieving increment and maximum values: {e}")
         camera.Close()
         pidevice.CloseConnection()
         return

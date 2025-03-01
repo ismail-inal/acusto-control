@@ -10,7 +10,7 @@ import lib.mtr as mtr
 
 def main():
     print("Loading configuration...")
-    config = cnf.load_config("config.json")
+    config = cnf.load_config("config.toml")
 
     print("Connecting to the motor controller...")
     pidevice = mtr.connect_pi(
