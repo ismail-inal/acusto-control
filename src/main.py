@@ -40,8 +40,6 @@ def main():
         offset_y_increment = camera.OffsetY.GetInc()
         width_increment = camera.Width.GetInc()
         height_increment = camera.Height.GetInc()
-        max_offset_x = camera.OffsetX.GetMax()
-        max_offset_y = camera.OffsetY.GetMax()
         max_width = camera.Width.GetMax()
         max_height = camera.Height.GetMax()
 
@@ -51,8 +49,6 @@ def main():
         print(
             f"OffsetX Increment: {offset_x_increment}, OffsetY Increment: {offset_y_increment}"
         )
-
-        print(f"Maximum Offset X: {max_offset_x}, Maximum Offset Y: {max_offset_y}")
 
         print(f"Maximum Width: {max_width}, Maximum Height: {max_height}")
 
@@ -113,7 +109,6 @@ def main():
 
                 try:
                     # NOTE: if you want a specific size uncomment this and comment the other paragraph
-                    # Adjusting camera region of interest
                     # camera.Width.Value = config.camera.kernel_size[0]
                     # camera.Height.Value = config.camera.kernel_size[1]
 
@@ -123,8 +118,12 @@ def main():
                     adjusted_height = adjust(
                         abs(y_max - y_min), height_increment, max_height
                     )
-                    adjusted_offset_x = adjust(x_min, offset_x_increment, max_offset_x)
-                    adjusted_offset_y = adjust(y_min, offset_y_increment, max_offset_y)
+                    adjusted_offset_x = adjust(
+                        x_min, offset_x_increment, config.camera.max_offset[0]
+                    )
+                    adjusted_offset_y = adjust(
+                        y_min, offset_y_increment, config.camera.max_offset[1]
+                    )
 
                     camera.Width.Value = adjusted_width
                     camera.Height.Value = adjusted_height
