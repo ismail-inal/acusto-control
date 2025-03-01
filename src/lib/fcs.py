@@ -20,3 +20,6 @@ def capture_focus_range(
         pidevice.MOV(config.axes.z, target_z)
         pitools.waitontarget(pidevice, config.axes.z)
         save_images(camera, 1, frame_dir, step_num)
+
+    pidevice.MOV(config.axes.z, current_z)
+    pitools.waitontarget(pidevice, config.axes.z)
