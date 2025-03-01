@@ -22,9 +22,7 @@ def main():
 
     print("Connecting to the camera...")
     camera = cmr.connect_camera(500, config.camera.exposure, config.camera.fps)
-    output_dir = config.file.save_dir
-
-    os.makedirs(output_dir, exist_ok=True)
+    os.makedirs(config.file.save_dir, exist_ok=True)
 
     print("Starting scanning process...")
     for y in range(config.movement.num_steps_y + 1):
@@ -52,7 +50,8 @@ def main():
                         img = pylon.PylonImage()
                         img.AttachGrabResultBuffer(result)
                         filename = os.path.join(
-                            output_dir, f"position({target_x},{target_y}).tiff"
+                            config.file.save_dir,
+                            f"position({target_x},{target_y}).tiff",
                         )
                         img.Save(pylon.ImageFileFormat_Tiff, filename)
                         img.Release()

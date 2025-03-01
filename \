@@ -1,3 +1,5 @@
+import os
+
 from pipython import pitools
 from pypylon import genicam
 
@@ -42,7 +44,7 @@ def main():
                 continue
 
             print("Starting Image capture.")
-            fcs.capture_focus_range(pidevice, camera, config, config.file.save_dir)
+            fcs.move_to_focus(pidevice, camera, config, config.file.save_dir)
             print("Image capture complete.")
 
     print("Closing connections...")

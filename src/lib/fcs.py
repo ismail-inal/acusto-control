@@ -6,7 +6,7 @@ from lib.cmr import save_images
 from lib.cnf import Config
 
 
-def move_to_focus(
+def capture_focus_range(
     pidevice: GCSDevice,
     camera: pylon.InstantCamera,
     config: Config,
