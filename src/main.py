@@ -118,15 +118,20 @@ def main():
                     adjusted_height = adjust(
                         abs(y_max - y_min), height_increment, max_height
                     )
-                    adjusted_offset_x = adjust(
-                        x_min, offset_x_increment, config.camera.max_offset[0]
-                    )
-                    adjusted_offset_y = adjust(
-                        y_min, offset_y_increment, config.camera.max_offset[1]
-                    )
 
                     camera.Width.Value = adjusted_width
                     camera.Height.Value = adjusted_height
+
+                    current_max_offset_x = camera.OffsetX.GetMax()
+                    current_max_offset_y = camera.OffsetY.GetMax()
+
+                    adjusted_offset_x = adjust(
+                        x_min, offset_x_increment, current_max_offset_x
+                    )
+                    adjusted_offset_y = adjust(
+                        y_min, offset_y_increment, current_max_offset_y
+                    )
+
                     camera.OffsetX.Value = adjusted_offset_x
                     camera.OffsetY.Value = adjusted_offset_y
 
