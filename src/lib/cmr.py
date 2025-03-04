@@ -31,9 +31,9 @@ def return_single_image(camera: pylon.InstantCamera) -> ndarray:
 
 
 def save_images(
-    camera: pylon.InstantCamera, num: int, file_path: str, grab_idx: int = 0
+    camera: pylon.InstantCamera, num: int, file_dir: str, grab_idx: int = 0
 ) -> None:
-    makedirs(file_path, exist_ok=True)
+    makedirs(file_dir, exist_ok=True)
 
     camera.StartGrabbingMax(num)
 
@@ -42,7 +42,7 @@ def save_images(
             if result.GrabSucceeded():
                 img = pylon.PylonImage()
                 img.AttachGrabResultBuffer(result)
-                filename = path.join(file_path, f"{grab_idx}.tiff")
+                filename = path.join(file_dir, f"{grab_idx}.tiff")
                 img.Save(pylon.ImageFileFormat_Tiff, filename)
                 img.Release()
                 print(f"Saved image: {filename}")

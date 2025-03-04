@@ -9,7 +9,7 @@ import lib.cnf as cnf
 import lib.mtr as mtr
 from lib.cell_detection import get_bounding_boxes
 
-# import lib.fcs as fcs
+import lib.fcs as fcs
 
 
 def main():
@@ -136,9 +136,9 @@ def main():
                         f"OffsetX={camera.OffsetX.Value}, OffsetY={camera.OffsetY.Value}"
                     )
 
-                    # print("Performing autofocus...")
-                    # focus_dir = os.path.join(temp_dir, "focus")
-                    # fcs.move_to_focus(pidevice, camera, config, focus_dir)
+                    print("Performing autofocus...")
+                    focus_dir = os.path.join(temp_dir, "focus")
+                    fcs.move_to_focus(pidevice, camera, config, focus_dir)
 
                     print("Starting image capture...")
                     cmr.save_images(camera, config.camera.num_of_images, frame_dir)
