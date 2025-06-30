@@ -1,4 +1,5 @@
 import os
+import logging
 
 from pipython import pitools
 from pypylon import genicam
@@ -12,23 +13,51 @@ from lib.cell_detection import get_bounding_boxes
 import lib.fcs as fcs
 
 
+# TODO: histogram/roi auto exposure
+# TODO: autofocus algorithm based on https://opg.optica.org/oe/fulltext.cfm?uri=oe-29-7-10285&id=449327
+# TODO: cell yolo model
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler(), logging.FileHandler("acusto_control.log")],
+)
+logger = logging.getLogger(__name__)
+
+
 def main():
-    print("Loading configuration...")
+    logger.info("Loading configuration...")
     config = cnf.load_config("config.toml")
 
-    print("Connecting to the motor controller...")
-    pidevice = mtr.connect_pi(
-        config.motor.controllername,
-        config.motor.serialnum,
-        config.motor.stages,
-        config.motor.refmodes,
-    )
+    logger.debug(f"Config details:\n{config}")
 
-    print("Connecting to the camera...")
-    camera = cmr.connect_camera(500, config.camera.exposure, config.camera.fps)
+    try:
+        logger.info("Connecting to the motor controller...")
+        pidevice = mtr.connect_pi(
+            config.motor.controllername,
+            config.motor.serialnum,
+            config.motor.stages,
+            config.motor.refmodes,
+        )
+    except Exception as e:
+        logger.critical(
+            f"Could not connect to the motor controller: {e}\n"
+            + "Terminating operation."
+        )
+        return
+
+    logger.info("Connecting to the camera...")
+    try:
+        camera = cmr.connect_camera(500, config.camera.exposure, config.camera.fps)
+    except Exception as e:
+        logger.critical(
+            f"Could not connect to the camera: {e}\n" + "Terminating operation."
+        )
+        return
+
     os.makedirs(config.file.save_dir, exist_ok=True)
 
-    print("Loading the yolov8 model...")
+    logger.info("Loading the object detection model...")
     model = YOLO(config.file.model_path)
 
     try:
@@ -39,23 +68,22 @@ def main():
         max_width = camera.Width.GetMax()
         max_height = camera.Height.GetMax()
 
-        print(
-            f"Width Increment: {width_increment}, Height Increment: {height_increment}"
-        )
-        print(
-            f"OffsetX Increment: {offset_x_increment}, OffsetY Increment: {offset_y_increment}"
+        logger.debug(
+            f"Width Increment: {width_increment}, Height Increment: {height_increment}\n"
+            + f"OffsetX Increment: {offset_x_increment}, OffsetY Increment: {offset_y_increment}\n"
+            + f"Maximum Width: {max_width}, Maximum Height: {max_height}"
         )
 
-        print(f"Maximum Width: {max_width}, Maximum Height: {max_height}")
-
-    except genicam.GenericException as e:
-        print(f"Error retrieving increment and maximum values: {e}")
+    except Exception as e:
+        logger.critical(
+            f"Error retrieving increment and maximum values: {e}\n"
+            + "Terminating operation gracefully..."
+        )
         camera.Close()
         pidevice.CloseConnection()
         return
 
-    print("Starting scanning process...")
-
+    logger.info("Starting scanning process...")
     for y in range(config.movement.num_steps_y + 1):
         for x in (
             range(config.movement.num_steps_x + 1)
@@ -64,34 +92,35 @@ def main():
         ):
             target_x = config.vertex.pt1[0] + x * config.movement.dx
             target_y = config.vertex.pt1[1] + y * config.movement.dy
-            print(f"\nMoving to position: X={target_x}, Y={target_y}")
+            logger.debug(f"\nMoving to position: X={target_x}, Y={target_y}")
 
             try:
                 pidevice.MOV([config.axes.x, config.axes.y], [target_x, target_y])
                 pitools.waitontarget(pidevice, axes=(config.axes.x, config.axes.y))
-                print("Stage movement complete.")
+                logger.debug("Stage movement complete.")
             except Exception as e:
-                print(f"Error during stage movement: {e}")
+                logger.error(f"Error during stage movement: {e}\n")
                 continue
 
-            print("Capturing original image...")
+            logger.info("Capturing original image...")
             temp_dir = os.path.join(config.file.save_dir, "temp")
             try:
                 cmr.save_images(camera, 1, temp_dir)
             except Exception as e:
-                print(f"Error capturing image: {e}")
+                logger.error(f"Error capturing image: {e}")
                 continue
 
-            print("Detecting circles...")
+            logger.info("Detecting objects...")
             temp_file = os.path.join(temp_dir, "0.tiff")
             bboxes = get_bounding_boxes(model, temp_file, 40)
 
             if bboxes is None:
-                print("There are no circles detected. Skipping current position...")
+                logger.warning(
+                    "There are no objects detected. Skipping current position..."
+                )
                 continue
 
-            print(f"Detected {len(bboxes)} circles.")
-
+            logger.debug(f"Detected {len(bboxes)} objects.")
             for idx, bbox in enumerate(bboxes):
                 frame_dir = os.path.join(
                     config.file.save_dir,
@@ -99,7 +128,7 @@ def main():
                 )
 
                 x_min, y_min, x_max, y_max = bbox
-                print(
+                logger.debug(
                     f"\nProcessing Circle {idx}: top left corner ({x_min}, {y_min}), bottom right corner({x_max}, {y_max})"
                 )
 
@@ -131,43 +160,55 @@ def main():
                     camera.OffsetX.Value = adjusted_offset_x
                     camera.OffsetY.Value = adjusted_offset_y
 
-                    print(
+                    logger.debug(
                         f"Adjusted Camera ROI: Width={camera.Width.Value}, Height={camera.Height.Value}, "
                         f"OffsetX={camera.OffsetX.Value}, OffsetY={camera.OffsetY.Value}"
                     )
 
-                    print("Performing autofocus...")
-                    focus_dir = os.path.join(temp_dir, "focus")
-                    fcs.move_to_focus(pidevice, camera, config, focus_dir)
+                    try:
+                        logger.info("Adjusting focus...")
+                        fcs.move_to_focus(pidevice, camera, config)
+                    except Exception as e:
+                        logger.error(f"Error during focusing: {e}")
+                        continue
 
-                    print("Starting image capture...")
+                    logger.info("Starting image capture...")
                     cmr.save_images(camera, config.camera.num_of_images, frame_dir)
-                    print("Image capture complete.")
+                    logger.info("Image capture complete.")
 
                 except Exception as e:
-                    print(f"Error processing circle {idx}: {e}")
+                    logger.error(f"Error processing circle {idx}: {e}")
+                    continue
+
                 finally:
                     try:
+                        logger.info("Resetting camera settings")
                         camera.OffsetX.Value = 0
                         camera.OffsetY.Value = 0
                         camera.Width.Value = max_width
                         camera.Height.Value = max_height
-                        print("Camera settings reset.")
+                        logger.info("Camera settings reset.")
                     except genicam.GenericException as e:
-                        print(f"Error resetting camera settings: {e}")
+                        logger.critical(
+                            f"Error resetting camera settings: {e}\n"
+                            + "terminating operation gracefully..."
+                        )
+                        camera.Close()
+                        pidevice.CloseConnection()
+                        return
 
-    print("Closing connections...")
+    logger.info("Closing connections...")
     try:
         pidevice.CloseConnection()
     except Exception as e:
-        print(f"Error closing motion controller connection: {e}")
+        logger.error(f"Error closing motion controller connection: {e}")
 
     try:
         camera.Close()
     except genicam.GenericException as e:
-        print(f"Error closing camera connection: {e}")
+        logger.error(f"Error closing camera connection: {e}")
 
-    print("Process complete.")
+    logger.info("Process complete.")
 
 
 def adjust(value, increment, max_value):

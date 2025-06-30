@@ -1,12 +1,160 @@
-from os.path import join
+from dataclasses import dataclass
 
-import cv2
 import numpy as np
 from pipython import GCSDevice, pitools
 from pypylon import pylon
 
-from lib.cmr import save_images
+from lib.cmr import return_single_image, save_images
 from lib.cnf import Config
+
+
+@dataclass
+class Pos2d:
+    i: int
+    j: int
+
+
+def move_to_focus(
+    pidevice: GCSDevice,
+    camera: pylon.InstantCamera,
+    config: Config,
+) -> float:
+    image_array = []
+    for idx in range(-config.movement.max_step_z, config.movement.max_step_z + 1, 1):
+        current_z = pidevice.qPOS(config.axes.z)[config.axes.z]
+        target_z = current_z + config.movement.dz * idx
+        pidevice.MOV(config.axes.z, target_z)
+        pitools.waitontarget(pidevice, config.axes.z)
+        img = return_single_image(camera)
+        image_array.append(img)
+    image_array = np.stack(image_array)
+
+    focus_point = focus_slope_variation(
+        image_array,
+        Pos2d(image_array.shape[-1] // 2, image_array.shape[-2] // 2),
+        15,
+        21,
+        Pos2d(9, 9),
+    )  # 91 , 3 can sometimes work better esp. on larger images
+    # -20 to map back to idx and then -20 again since camera is on max idx
+    target_idx = focus_point - 40
+
+    best_target_z = config.movement.dz * target_idx
+    pidevice.MOV(config.axes.z, best_target_z)
+    pitools.waitontarget(pidevice, config.axes.z)
+    return best_target_z
+
+
+def crop_images(
+    image_stack: np.ndarray, mask_size: Pos2d, center_pixel: Pos2d
+) -> np.ndarray:
+    c_i, c_j = mask_size.i // 2, mask_size.j // 2
+    new_stack = image_stack[
+        :,
+        center_pixel.j - c_j : center_pixel.j + c_j + 1,
+        center_pixel.i - c_i - 1 : center_pixel.i + c_i + 1,
+    ]
+
+    return new_stack
+
+
+def V_s(image_stack: np.ndarray) -> np.ndarray:
+    slope_sign = image_stack[:, :, 1:] > image_stack[:, :, :-1]
+    return slope_sign
+
+
+def P(image_stack: np.ndarray) -> np.ndarray:
+    position = image_stack[:, :, 1:] ^ image_stack[:, :, :-1]
+    return position
+
+
+def N_s(image_stack: np.ndarray) -> np.ndarray:
+    return image_stack.sum(axis=(-1, -2))
+
+
+def K_one(shape: int, C_b: int) -> np.ndarray:
+    mid_point = shape // 2
+    x_1, x_2 = mid_point - C_b, mid_point + C_b
+
+    mask = np.zeros(shape, dtype=int)
+    mask[x_1 : x_2 + 1] = 1
+    return mask
+
+
+def K_two(shape: int, C_b: int) -> np.ndarray:
+    mid_point = shape // 2
+    x_1, x_2 = mid_point - C_b // 2, mid_point + C_b // 2
+
+    mask = np.ones(shape, dtype=int)
+    mask[x_1 : x_2 + 1] = 0
+    return mask
+
+
+def f(F):
+    F = np.asarray(F, dtype=complex)
+    M = F.size
+    u = np.arange(M)[:, None]
+    z = np.arange(M)[None, :]
+    kernel = np.exp(1j * 2 * np.pi * u * z / M)
+    abs_terms = np.abs(F[:, None] * kernel)
+    f = np.sum(abs_terms, axis=0) / M
+    return f
+
+
+# m_prime = np.where(points == 1)[0] +1 possibly
+def inflection_points(array: np.ndarray) -> np.ndarray:
+    z_0, z_1, z_2 = array[:-2], array[1:-1], array[2:]
+    points = ((z_0 < z_1) & (z_1 > z_2)) | ((z_0 > z_1) & (z_1 < z_2))
+
+    m_prime = np.where(points)[0] + 1
+
+    return m_prime
+
+
+def Q(inflection_points: np.ndarray, f1: np.ndarray, f2: np.ndarray, V_b: int) -> int:
+    collector = []
+    for point in inflection_points:
+        x1, x2 = point - V_b // 2, point + V_b // 2
+        sum_window = np.abs(f2[x1 : x2 + 1]).sum()
+        if sum_window == 0:
+            collector.append(100000)
+            continue
+        fuckass_thing = f1[point] * V_b / sum_window
+        collector.append(fuckass_thing)
+
+    return inflection_points[np.argmin(collector)]
+
+
+def focus_slope_variation(
+    image_stack: np.ndarray,
+    center_pixel: Pos2d,
+    C_b: int,
+    V_b: int,
+    mask_size: Pos2d = Pos2d(9, 9),
+):
+    cropped_imgs = crop_images(image_stack, mask_size, center_pixel)
+
+    slope_sign = V_s(cropped_imgs)
+
+    pos = P(slope_sign)
+
+    slope_variations = N_s(pos)
+
+    F = np.fft.fft(slope_variations)
+
+    K1 = K_one(F.shape[-1], C_b)
+    K2 = K_two(F.shape[-1], C_b)
+
+    f1 = f(
+        F.copy() * K1,
+    )
+    f2 = f(F * K2)
+
+    M_prime = inflection_points(f1.copy())
+
+    focus_point = Q(M_prime, f1, f2, V_b)
+
+    return focus_point
 
 
 def _capture_focus_range(
@@ -15,10 +163,8 @@ def _capture_focus_range(
     config: Config,
     frame_dir: str,
 ) -> float:
-    step_nums = np.arange(-config.movement.max_step_z, config.movement.max_step_z + 1)
-    current_z = pidevice.qPOS(config.axes.z)[config.axes.z]
-
-    for step_num in step_nums:
+    for step_num in range(-20, 20, 1):
+        current_z = pidevice.qPOS(config.axes.z)[config.axes.z]
         target_z = current_z + config.movement.dz * step_num
         pidevice.MOV(config.axes.z, target_z)
         pitools.waitontarget(pidevice, config.axes.z)
@@ -28,53 +174,3 @@ def _capture_focus_range(
     pitools.waitontarget(pidevice, config.axes.z)
 
     return current_z
-
-
-def _fft_focus_measure(gray, low_freq_radius_ratio=0.1):
-    f = np.fft.fft2(gray)
-    fshift = np.fft.fftshift(f)
-    magnitude_spectrum = np.abs(fshift)
-
-    total_energy = np.sum(magnitude_spectrum)
-
-    rows, cols = gray.shape
-    crow, ccol = rows // 2, cols // 2
-
-    radius = int(low_freq_radius_ratio * min(rows, cols))
-    Y, X = np.ogrid[:rows, :cols]
-    distance = np.sqrt((Y - crow) ** 2 + (X - ccol) ** 2)
-    low_freq_mask = distance <= radius
-
-    high_freq_energy = np.sum(magnitude_spectrum[~low_freq_mask])
-
-    ratio = high_freq_energy / total_energy
-    return ratio
-
-
-def move_to_focus(
-    pidevice: GCSDevice,
-    camera: pylon.InstantCamera,
-    config: Config,
-    frame_dir: str,
-) -> None:
-    current_z = _capture_focus_range(pidevice, camera, config, frame_dir)
-    best_image_idx = 0
-
-    best_score = -np.inf
-    for idx in range(-config.movement.max_step_z, config.movement.max_step_z + 1, 1):
-        path = join(frame_dir, f"{idx}.tiff")
-        image = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
-        if image is None:
-            print(f"Warning: Could not read image {path}. Skipping.")
-            continue
-
-        score = _fft_focus_measure(image)
-        print(f"Image: {path}, FFT Focus Score: {score:.4f}")
-
-        if score > best_score:
-            best_image_idx = idx
-
-    target_z = current_z + config.movement.dz * best_image_idx
-    pidevice.MOV(config.axes.z, target_z)
-    pitools.waitontarget(pidevice, config.axes.z)
-    print(f"Moved to z target value: {target_z}.")
