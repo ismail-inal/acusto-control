@@ -1,5 +1,8 @@
 import os
 import logging
+import signal
+import sys
+from functools import partial
 
 from pipython import pitools
 from pypylon import genicam
@@ -14,7 +17,6 @@ import lib.fcs as fcs
 
 
 # TODO: histogram/roi auto exposure
-# TODO: autofocus algorithm based on https://opg.optica.org/oe/fulltext.cfm?uri=oe-29-7-10285&id=449327
 # TODO: cell yolo model
 
 logging.basicConfig(
@@ -61,17 +63,17 @@ def main():
     model = YOLO(config.file.model_path)
 
     try:
-        offset_x_increment = camera.OffsetX.GetInc()
-        offset_y_increment = camera.OffsetY.GetInc()
-        width_increment = camera.Width.GetInc()
-        height_increment = camera.Height.GetInc()
-        max_width = camera.Width.GetMax()
-        max_height = camera.Height.GetMax()
+        offset_x_inc = camera.OffsetX.GetInc()
+        offset_y_inc = camera.OffsetY.GetInc()
+        width_inc = camera.Width.GetInc()
+        height_inc = camera.Height.GetInc()
+        width_max = camera.Width.GetMax()
+        height_max = camera.Height.GetMax()
 
         logger.debug(
-            f"Width Increment: {width_increment}, Height Increment: {height_increment}\n"
-            + f"OffsetX Increment: {offset_x_increment}, OffsetY Increment: {offset_y_increment}\n"
-            + f"Maximum Width: {max_width}, Maximum Height: {max_height}"
+            f"Width Increment: {width_inc}, Height Increment: {height_inc}\n"
+            + f"OffsetX Increment: {offset_x_inc}, OffsetY Increment: {offset_y_inc}\n"
+            + f"Maximum Width: {width_max}, Maximum Height: {height_max}"
         )
 
     except Exception as e:
@@ -82,6 +84,15 @@ def main():
         camera.Close()
         pidevice.CloseConnection()
         return
+
+    handler = partial(
+        cleanup,
+        camera=camera,
+        width_max=width_max,
+        height_max=height_max,
+        pidevice=pidevice,
+    )
+    signal.signal(signal.SIGINT, handler)
 
     logger.info("Starting scanning process...")
     for y in range(config.movement.num_steps_y + 1):
@@ -129,7 +140,7 @@ def main():
 
                 x_min, y_min, x_max, y_max = bbox
                 logger.debug(
-                    f"\nProcessing Circle {idx}: top left corner ({x_min}, {y_min}), bottom right corner({x_max}, {y_max})"
+                    f"\nProcessing object {idx}: top left corner ({x_min}, {y_min}), bottom right corner({x_max}, {y_max})"
                 )
 
                 try:
@@ -137,12 +148,8 @@ def main():
                     # camera.Width.Value = config.camera.kernel_size[0]
                     # camera.Height.Value = config.camera.kernel_size[1]
 
-                    adjusted_width = adjust(
-                        abs(x_max - x_min), width_increment, max_width
-                    )
-                    adjusted_height = adjust(
-                        abs(y_max - y_min), height_increment, max_height
-                    )
+                    adjusted_width = adjust(abs(x_max - x_min), width_inc, width_max)
+                    adjusted_height = adjust(abs(y_max - y_min), height_inc, height_max)
 
                     camera.Width.Value = adjusted_width
                     camera.Height.Value = adjusted_height
@@ -151,10 +158,10 @@ def main():
                     current_max_offset_y = camera.OffsetY.GetMax()
 
                     adjusted_offset_x = adjust(
-                        x_min, offset_x_increment, current_max_offset_x
+                        x_min, offset_x_inc, current_max_offset_x
                     )
                     adjusted_offset_y = adjust(
-                        y_min, offset_y_increment, current_max_offset_y
+                        y_min, offset_y_inc, current_max_offset_y
                     )
 
                     camera.OffsetX.Value = adjusted_offset_x
@@ -170,23 +177,21 @@ def main():
                         fcs.move_to_focus(pidevice, camera, config)
                     except Exception as e:
                         logger.error(f"Error during focusing: {e}")
-                        continue
 
                     logger.info("Starting image capture...")
                     cmr.save_images(camera, config.camera.num_of_images, frame_dir)
                     logger.info("Image capture complete.")
 
                 except Exception as e:
-                    logger.error(f"Error processing circle {idx}: {e}")
-                    continue
+                    logger.error(f"Error processing object {idx}: {e}")
 
                 finally:
                     try:
                         logger.info("Resetting camera settings")
                         camera.OffsetX.Value = 0
                         camera.OffsetY.Value = 0
-                        camera.Width.Value = max_width
-                        camera.Height.Value = max_height
+                        camera.Width.Value = width_max
+                        camera.Height.Value = height_max
                         logger.info("Camera settings reset.")
                     except genicam.GenericException as e:
                         logger.critical(
@@ -216,6 +221,23 @@ def adjust(value, increment, max_value):
     adjusted_value = raw_value - (raw_value % increment)
     final_value = min(adjusted_value, max_value)
     return final_value
+
+
+def cleanup(signum, frame, *, camera, width_max, height_max, pidevice):
+    logger.info("SIGINT received: restoring camera & closing connections…")
+    try:
+        camera.OffsetX.Value = 0
+        camera.OffsetY.Value = 0
+        camera.Width.Value = width_max
+        camera.Height.Value = height_max
+        camera.Close()
+    except Exception as e:
+        logger.error(f"Error resetting/closing camera: {e}")
+    try:
+        pidevice.CloseConnection()
+    except Exception as e:
+        logger.error(f"Error closing motion controller: {e}")
+    sys.exit(0)
 
 
 if __name__ == "__main__":
