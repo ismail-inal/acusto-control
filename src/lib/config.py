@@ -9,7 +9,7 @@ class CameraConfig:
     exposure: float
     kernel_size: List[int]
     fps: float
-    num_of_images: int
+    img_num: int
 
 
 @dataclass
@@ -50,6 +50,14 @@ class FileConfig:
 
 
 @dataclass
+class EnConfig:
+    auto_focus: bool
+    object_detection: bool
+    dynamic_exposure: bool
+    depth: bool
+
+
+@dataclass
 class Config:
     camera: CameraConfig
     motor: MotorConfig
@@ -57,6 +65,7 @@ class Config:
     vertex: VertexConfig
     movement: MovementConfig
     file: FileConfig
+    en: EnConfig
 
     @classmethod
     def from_dict(cls, config_dict: dict) -> "Config":
@@ -67,6 +76,7 @@ class Config:
             vertex=VertexConfig(**config_dict["VERTEX"]),
             movement=MovementConfig(**config_dict["MOVEMENT"]),
             file=FileConfig(**config_dict["FILE"]),
+            en=EnConfig(**config_dict["EN"]),
         )
 
 

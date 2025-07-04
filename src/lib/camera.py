@@ -45,9 +45,7 @@ def save_images(
                 filename = path.join(file_dir, f"{grab_idx}.tiff")
                 img.Save(pylon.ImageFileFormat_Tiff, filename)
                 img.Release()
-                print(f"Saved image: {filename}")
                 grab_idx += 1
             else:
-                print(f"Grab failed with error: {result.ErrorCode}")
 
     camera.StopGrabbing()

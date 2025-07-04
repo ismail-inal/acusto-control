@@ -4,8 +4,8 @@ import numpy as np
 from pipython import GCSDevice, pitools
 from pypylon import pylon
 
-from lib.cmr import return_single_image, save_images
-from lib.cnf import Config
+from lib.camera import return_single_image, save_images
+from lib.config import Config
 
 
 @dataclass
