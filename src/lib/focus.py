@@ -20,7 +20,7 @@ def move_to_focus(
     config: Config,
 ) -> float:
     image_array = []
-    for idx in range(-config.movement.max_step_z, config.movement.max_step_z + 1, 1):
+    for idx in range(-config.movement.z_max_step, config.movement.z_max_step + 1, 1):
         current_z = pidevice.qPOS(config.axes.z)[config.axes.z]
         target_z = current_z + config.movement.dz * idx
         pidevice.MOV(config.axes.z, target_z)
@@ -162,15 +162,17 @@ def _capture_focus_range(
     camera: pylon.InstantCamera,
     config: Config,
     frame_dir: str,
-) -> float:
-    for step_num in range(-20, 20, 1):
+):
+    org_z = pidevice.qPOS(config.axes.z)[config.axes.z]
+    for step_num in range(
+        -config.movement.z_max_step, config.movement.z_max_step + 1, 1
+    ):
         current_z = pidevice.qPOS(config.axes.z)[config.axes.z]
         target_z = current_z + config.movement.dz * step_num
         pidevice.MOV(config.axes.z, target_z)
         pitools.waitontarget(pidevice, config.axes.z)
         save_images(camera, 1, frame_dir, step_num)
 
-    pidevice.MOV(config.axes.z, current_z)
+    pidevice.MOV(config.axes.z, org_z)
     pitools.waitontarget(pidevice, config.axes.z)
-
-    return current_z
+    return

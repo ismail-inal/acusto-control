@@ -38,9 +38,9 @@ class MovementConfig:
     dx: float
     dy: float
     dz: float
-    max_step_z: int
-    num_steps_x: int
-    num_steps_y: int
+    z_max_step: int
+    x_step_num: int
+    y_step_num: int
 
 
 @dataclass
@@ -84,12 +84,12 @@ def load_config(config_path="config.toml"):
     with open(config_path, "rb") as file:
         config = tomllib.load(file)
 
-    config["MOVEMENT"]["num_steps_x"] = int(
+    config["MOVEMENT"]["x_step_num"] = int(
         abs(config["VERTEX"]["pt1"][0] - config["VERTEX"]["pt2"][0])
         // config["MOVEMENT"]["dx"]
     )
 
-    config["MOVEMENT"]["num_steps_y"] = int(
+    config["MOVEMENT"]["y_step_num"] = int(
         abs(config["VERTEX"]["pt1"][1] - config["VERTEX"]["pt2"][1])
         // config["MOVEMENT"]["dy"]
     )

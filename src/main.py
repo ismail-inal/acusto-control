@@ -42,11 +42,11 @@ def main():
     signal.signal(signal.SIGINT, handler)
 
     logger.info("Starting scanning process...")
-    for y in range(ctx.config.movement.num_steps_y + 1):
+    for y in range(ctx.config.movement.y_step_num + 1):
         for x in (
-            range(ctx.config.movement.num_steps_x + 1)
+            range(ctx.config.movement.x_step_num + 1)
             if y % 2 == 0
-            else range(ctx.config.movement.num_steps_x + 1)[::-1]
+            else range(ctx.config.movement.x_step_num + 1)[::-1]
         ):
             # scanning
             target_x = ctx.config.vertex.pt1[0] + x * ctx.config.movement.dx
