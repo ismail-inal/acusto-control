@@ -104,7 +104,9 @@ def main():
                         ctx.pidevice, ctx.camera, ctx.config, frame_dir
                     )
                 else:
-                    cmr.save_images(ctx.camera, ctx.config.camera.img_num, frame_dir)
+                    cmr.save_images(
+                        ctx.camera, ctx.config.camera.img_num, frame_dir, logger
+                    )
                 logger.info("Image capture complete.")
 
                 # resetting camera settings
@@ -140,7 +142,7 @@ def object_detection(ctx: AppContext, logger):
     logger.info("Capturing original image...")
     temp_dir = os.path.join(ctx.config.file.save_dir, "temp")
     try:
-        cmr.save_images(ctx.camera, 1, temp_dir)
+        cmr.save_images(ctx.camera, 1, temp_dir, logger)
     except Exception as e:
         logger.error(f"Error capturing image: {e}")
         raise e

@@ -31,7 +31,11 @@ def return_single_image(camera: pylon.InstantCamera) -> ndarray:
 
 
 def save_images(
-    camera: pylon.InstantCamera, num: int, file_dir: str, grab_idx: int = 0
+    camera: pylon.InstantCamera,
+    num: int,
+    file_dir: str,
+    logger,
+    grab_idx: int = 0,
 ) -> None:
     makedirs(file_dir, exist_ok=True)
 
@@ -47,5 +51,6 @@ def save_images(
                 img.Release()
                 grab_idx += 1
             else:
+                logger.error(f"Grab failed with error: {result.ErrorCode}")
 
     camera.StopGrabbing()
