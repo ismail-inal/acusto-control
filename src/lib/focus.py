@@ -36,8 +36,8 @@ def move_to_focus(
         21,
         Pos2d(9, 9),
     )  # 91 , 3 can sometimes work better esp. on larger images
-    # -20 to map back to idx and then -20 again since camera is on max idx
-    target_idx = focus_point - 40
+    # -max_step to map back to idx and then -max_step again since camera is on max idx
+    target_idx = focus_point - 2 * config.movement.z_max_step
 
     best_target_z = config.movement.dz * target_idx
     pidevice.MOV(config.axes.z, best_target_z)
