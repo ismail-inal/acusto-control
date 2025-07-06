@@ -14,15 +14,15 @@ class Pos2d:
     j: int
 
 
-def move_to_focus(
+def auto_focus(
     pidevice: GCSDevice,
     camera: pylon.InstantCamera,
     config: Config,
-) -> float:
+):
     image_array = []
+    base_z = pidevice.qPOS(config.axes.z)[config.axes.z]
     for idx in range(-config.movement.z_max_step, config.movement.z_max_step + 1, 1):
-        current_z = pidevice.qPOS(config.axes.z)[config.axes.z]
-        target_z = current_z + config.movement.dz * idx
+        target_z = base_z + config.movement.dz * idx
         pidevice.MOV(config.axes.z, target_z)
         pitools.waitontarget(pidevice, config.axes.z)
         img = return_single_image(camera)
@@ -36,13 +36,12 @@ def move_to_focus(
         21,
         Pos2d(9, 9),
     )  # 91 , 3 can sometimes work better esp. on larger images
-    # -max_step to map back to idx and then -max_step again since camera is on max idx
-    target_idx = focus_point - 2 * config.movement.z_max_step
 
-    best_target_z = config.movement.dz * target_idx
+    # -max_step to map back to idx
+    target_idx = focus_point - config.movement.z_max_step
+    best_target_z = base_z + config.movement.dz * target_idx
     pidevice.MOV(config.axes.z, best_target_z)
     pitools.waitontarget(pidevice, config.axes.z)
-    return best_target_z
 
 
 def crop_images(
@@ -167,8 +166,7 @@ def _capture_focus_range(
     for step_num in range(
         -config.movement.z_max_step, config.movement.z_max_step + 1, 1
     ):
-        current_z = pidevice.qPOS(config.axes.z)[config.axes.z]
-        target_z = current_z + config.movement.dz * step_num
+        target_z = org_z + config.movement.dz * step_num
         pidevice.MOV(config.axes.z, target_z)
         pitools.waitontarget(pidevice, config.axes.z)
         save_images(camera, 1, frame_dir, step_num)

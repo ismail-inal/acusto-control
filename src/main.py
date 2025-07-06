@@ -93,7 +93,7 @@ def main():
                 if ctx.config.en.auto_focus:
                     try:
                         logger.info("Adjusting focus...")
-                        fcs.move_to_focus(ctx.pidevice, ctx.camera, ctx.config)
+                        fcs.auto_focus(ctx.pidevice, ctx.camera, ctx.config)
                     except Exception as e:
                         logger.error(f"Error during focusing: {e}")
 
