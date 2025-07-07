@@ -14,7 +14,6 @@ from lib.cell_detection import get_bounding_boxes
 
 
 # TODO: histogram/roi auto exposure
-# TODO: wrap processes in modules that can be enabled/disabled (via a boolean in config.toml)
 # TODO: cell yolo model
 
 
@@ -101,7 +100,7 @@ def main():
                 logger.info("Starting image capture...")
                 if ctx.config.en.depth:
                     fcs._capture_focus_range(
-                        ctx.pidevice, ctx.camera, ctx.config, frame_dir
+                        ctx.pidevice, ctx.camera, ctx.config, frame_dir, logger
                     )
                 else:
                     cmr.save_images(

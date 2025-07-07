@@ -161,6 +161,7 @@ def _capture_focus_range(
     camera: pylon.InstantCamera,
     config: Config,
     frame_dir: str,
+    logger,
 ):
     org_z = pidevice.qPOS(config.axes.z)[config.axes.z]
     for step_num in range(
@@ -169,7 +170,7 @@ def _capture_focus_range(
         target_z = org_z + config.movement.dz * step_num
         pidevice.MOV(config.axes.z, target_z)
         pitools.waitontarget(pidevice, config.axes.z)
-        save_images(camera, 1, frame_dir, step_num)
+        save_images(camera, 1, frame_dir, logger, step_num)
 
     pidevice.MOV(config.axes.z, org_z)
     pitools.waitontarget(pidevice, config.axes.z)
