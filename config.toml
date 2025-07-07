@@ -23,7 +23,7 @@ pt2 = [14.0, 14.0]
 dx = 0.3
 dy = 0.5
 dz = 0.005
-max_step_z = 10
+z_max_step = 10
 
 [FILE]
 save_dir = "frames"
