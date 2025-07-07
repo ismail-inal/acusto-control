@@ -1,4 +1,4 @@
-from cv2 import imread
+import cv2
 from ultralytics.models.yolo import YOLO
 import numpy as np
 from typing import Optional
@@ -7,7 +7,8 @@ from typing import Optional
 def get_bounding_boxes(
     model: YOLO, img_path: str, buffer_size: int
 ) -> Optional[np.ndarray]:
-    img = imread(img_path)
+    img = cv2.imread(img_path)
+    img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
     results = model(img)
     bboxes = results[0].boxes.xyxy
 

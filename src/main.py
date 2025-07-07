@@ -10,7 +10,7 @@ from pypylon import genicam
 from lib.context import AppContext
 import lib.camera as cmr
 import lib.focus as fcs
-from lib.cell_detection import get_bounding_boxes
+from lib.object_detection import get_bounding_boxes
 
 
 # TODO: histogram/roi auto exposure
