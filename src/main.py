@@ -13,10 +13,6 @@ import lib.focus as fcs
 from lib.object_detection import get_bounding_boxes
 
 
-# TODO: histogram/roi auto exposure
-# TODO: cell yolo model
-
-
 def main():
     logging.basicConfig(
         level=logging.INFO,
@@ -92,16 +88,14 @@ def main():
                 if ctx.config.en.auto_focus:
                     try:
                         logger.info("Adjusting focus...")
-                        fcs.auto_focus(ctx.pidevice, ctx.camera, ctx.config)
+                        fcs.autofocus_golden(ctx, fcs.measure_std_dev)
                     except Exception as e:
                         logger.error(f"Error during focusing: {e}")
 
                 # image capture
                 logger.info("Starting image capture...")
                 if ctx.config.en.depth:
-                    fcs._capture_focus_range(
-                        ctx.pidevice, ctx.camera, ctx.config, frame_dir, logger
-                    )
+                    cmr.save_range(ctx, frame_dir, logger)
                 else:
                     cmr.save_images(
                         ctx.camera, ctx.config.camera.img_num, frame_dir, logger
@@ -148,7 +142,7 @@ def object_detection(ctx: AppContext, logger):
 
     logger.info("Detecting objects...")
     temp_file = os.path.join(temp_dir, "0.tiff")
-    bboxes = get_bounding_boxes(ctx.model, temp_file, 40)
+    bboxes = get_bounding_boxes(ctx, temp_file)
 
     if bboxes is None:
         logger.warning("There are no objects detected. Skipping current position...")

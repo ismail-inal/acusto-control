@@ -1,33 +1,34 @@
 from os import makedirs, path
 
-from numpy import ndarray
+import numpy as np
 from pypylon import pylon
+from pipython import pitools
+
+import lib.context as ctx
 
 
-def connect_camera(
-    buffer_val: int, exposure: float, frame_rate: float
-) -> pylon.InstantCamera:
+def connect_camera(config) -> pylon.InstantCamera:
     camera = pylon.InstantCamera(pylon.TlFactory.GetInstance().CreateFirstDevice())
     camera.Open()
-    camera.MaxNumBuffer.Value = buffer_val
-    camera.ExposureTime.Value = exposure
+    camera.MaxNumBuffer.Value = config.buffer_val
+    camera.ExposureTime.Value = config.exposure
     camera.AcquisitionFrameRateEnable.Value = True
-    camera.AcquisitionFrameRate.Value = frame_rate
+    camera.AcquisitionFrameRate.Value = config.frame_rate
     return camera
 
 
-def return_single_image(camera: pylon.InstantCamera) -> ndarray:
+def return_image(camera: pylon.InstantCamera) -> np.ndarray:
     camera.StartGrabbingMax(1)
 
     with camera.RetrieveResult(5000, pylon.TimeoutHandling_ThrowException) as result:
         if result.GrabSucceeded():
-            image_array = result.GetArray()
+            img = result.GetArray()
         else:
             raise RuntimeError("Image grab failed")
 
     camera.StopGrabbing()
 
-    return image_array
+    return img
 
 
 def save_images(
@@ -54,3 +55,37 @@ def save_images(
                 logger.error(f"Grab failed with error: {result.ErrorCode}")
 
     camera.StopGrabbing()
+
+
+def save_range(
+    ctx: ctx.AppContext,
+    frame_dir: str,
+    logger,
+):
+    org_z = ctx.pidevice.qPOS(ctx.config.axes.z)[ctx.config.axes.z]
+    for step_num in range(
+        -ctx.config.movement.z_max_step, ctx.config.movement.z_max_step + 1, 1
+    ):
+        target_z = org_z + ctx.config.movement.dz * step_num
+        ctx.pidevice.MOV(ctx.config.axes.z, target_z)
+        pitools.waitontarget(ctx.pidevice, ctx.config.axes.z)
+        save_images(ctx.camera, 1, frame_dir, logger, step_num)
+
+    ctx.pidevice.MOV(ctx.config.axes.z, org_z)
+    pitools.waitontarget(ctx.pidevice, ctx.config.axes.z)
+    return
+
+
+def return_range(ctx: ctx.AppContext, l_pos, r_pos):
+    img_arr = []
+    pos_range = np.arange(
+        l_pos, r_pos + ctx.config.focus.step_finer, ctx.config.focus.step_finer
+    )
+    pos_range = np.clip(pos_range, l_pos, r_pos)
+    for pos in pos_range:
+        ctx.pidevice.MOV(ctx.config.axes.z, pos)
+        pitools.waitontarget(ctx.pidevice, ctx.config.axes.z)
+        img_arr.append(return_image(ctx.camera))
+
+    img_arr = np.array(img_arr)
+    return img_arr

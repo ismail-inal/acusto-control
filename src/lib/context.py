@@ -1,9 +1,9 @@
 import os
 import sys
+from pipython import GCSDevice, pitools
 
 import lib.config as cnf
 import lib.camera as cmr
-import lib.motor as mtr
 from ultralytics import YOLO
 
 
@@ -23,12 +23,14 @@ class AppContext:
     def _connect_motor(self):
         try:
             self.logger.info("Connecting to the motor controller...")
-            self.pidevice = mtr.connect_pi(
-                self.config.motor.controllername,
-                self.config.motor.serialnum,
-                self.config.motor.stages,
-                self.config.motor.refmodes,
+            self.pidevice = GCSDevice(self.config.motor.controllername)
+            self.pidevice.ConnectUSB(serialnum=self.config.motor.serialnum)
+            pitools.startup(
+                self.pidevice,
+                stages=self.config.motor.stages,
+                refmodes=self.config.motor.refmodes,
             )
+
         except Exception as e:
             self.logger.critical(
                 f"Could not connect to the motor controller: {e}\nTerminating operation."
@@ -38,9 +40,7 @@ class AppContext:
     def _connect_camera(self):
         try:
             self.logger.info("Connecting to the camera...")
-            self.camera = cmr.connect_camera(
-                500, self.config.camera.exposure, self.config.camera.fps
-            )
+            self.camera = cmr.connect_camera(self.config)
         except Exception as e:
             self.logger.critical(
                 f"Could not connect to the camera: {e}\nTerminating operation."

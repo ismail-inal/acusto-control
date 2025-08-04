@@ -1,6 +1,5 @@
 [CAMERA]
 exposure = 40.0
-kernel_size = [512, 512]
 fps = 50.0
 img_num = 200
 
@@ -22,8 +21,22 @@ pt2 = [14.0, 14.0]
 [MOVEMENT]
 dx = 0.3
 dy = 0.5
-dz = 0.005
-z_max_step = 10
+dz = 0.00025
+z_max_step = 150
+
+[FOCUS]
+z_min = 1.33300
+z_max = 2.5000
+step_coarse = 10
+step_fine = 20
+step_finer = 120
+step_num = 1
+
+[OD]
+buffer_size = 10
+d_cell = 40
+d_boundary = 10
+
 
 [FILE]
 save_dir = "frames"

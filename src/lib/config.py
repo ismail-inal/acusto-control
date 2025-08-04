@@ -7,7 +7,6 @@ import tomllib
 @dataclass
 class CameraConfig:
     exposure: float
-    kernel_size: List[int]
     fps: float
     img_num: int
 
@@ -28,9 +27,26 @@ class AxesConfig:
 
 
 @dataclass
+class FocusConfig:
+    z_min: float
+    z_max: float
+    step_coarse: int
+    step_fine: int
+    step_finer: int
+    step_num: int
+
+
+@dataclass
 class VertexConfig:
     pt1: List[float]
     pt2: List[float]
+
+
+@dataclass
+class ODConfig:
+    buffer_size: int
+    d_cells: int
+    d_boundary: int
 
 
 @dataclass
@@ -41,6 +57,7 @@ class MovementConfig:
     z_max_step: int
     x_step_num: int
     y_step_num: int
+    rot_angle: float
 
 
 @dataclass
@@ -66,6 +83,8 @@ class Config:
     movement: MovementConfig
     file: FileConfig
     en: EnConfig
+    focus: FocusConfig
+    od: ODConfig
 
     @classmethod
     def from_dict(cls, config_dict: dict) -> "Config":
@@ -77,6 +96,8 @@ class Config:
             movement=MovementConfig(**config_dict["MOVEMENT"]),
             file=FileConfig(**config_dict["FILE"]),
             en=EnConfig(**config_dict["EN"]),
+            focus=FocusConfig(**config_dict["FOCUS"]),
+            od=ODConfig(**config_dict["OD"]),
         )
 
 
@@ -93,5 +114,9 @@ def load_config(config_path="config.toml"):
         abs(config["VERTEX"]["pt1"][1] - config["VERTEX"]["pt2"][1])
         // config["MOVEMENT"]["dy"]
     )
+
+    config["FOCUS"]["step_coarse"] *= config["MOVEMENT"]["dz"]
+    config["FOCUS"]["step_fine"] *= config["MOVEMENT"]["dz"]
+    config["FOCUS"]["step_finer"] *= config["MOVEMENT"]["dz"]
 
     return Config.from_dict(config)
