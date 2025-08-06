@@ -1,5 +1,6 @@
 from typing import Optional
 import os
+import cv2
 
 import numpy as np
 
@@ -8,7 +9,9 @@ import lib.camera as cmr
 
 
 def get_bounding_boxes(ctx: ctx.AppContext, img_path: str) -> Optional[np.ndarray]:
-    results = ctx.model(img_path, conf=0.7)
+    img = cv2.imread(img_path)
+    img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+    results = ctx.model(img, conf=0.7)
     bboxes = results[0].boxes.xyxy
 
     if bboxes.shape[0] == 0:

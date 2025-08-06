@@ -74,7 +74,7 @@ def main():
                 try:
                     bboxes = od.object_detection(ctx, logger)
                 except Exception as e:
-                    logger.error(f"Error during object detection: {e}", exc_info=True)
+                    logger.error(f"Error during object detection: {e}")
                     continue
             else:
                 bboxes = [[0, 0, ctx.width_max, ctx.height_max]]
