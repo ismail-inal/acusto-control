@@ -71,6 +71,7 @@ class EnConfig:
     object_detection: bool
     dynamic_exposure: bool
     depth: bool
+    sanitize: bool
 
 
 @dataclass

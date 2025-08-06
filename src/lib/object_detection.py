@@ -8,14 +8,16 @@ import lib.camera as cmr
 
 
 def get_bounding_boxes(ctx: ctx.AppContext, img_path: str) -> Optional[np.ndarray]:
-    results = ctx.model(img_path)
+    results = ctx.model(img_path, conf=0.7)
     bboxes = results[0].boxes.xyxy
 
     if bboxes.shape[0] == 0:
         return None
 
     bboxes = np.round(bboxes.cpu().numpy()).astype(int)
-    bboxes = sanitize_mask(bboxes, ctx)
+
+    if ctx.config.en.sanitize:
+        bboxes = sanitize_mask(bboxes, ctx)
 
     bboxes[:, 0] -= ctx.config.od.buffer_size
     bboxes[:, 1] -= ctx.config.od.buffer_size
@@ -97,8 +99,10 @@ def object_detection(ctx: ctx.AppContext, logger):
     temp_file = os.path.join(temp_dir, "0.tiff")
     bboxes = get_bounding_boxes(ctx, temp_file)
 
-    if bboxes is None:
-        logger.warning("There are no objects detected. Skipping current position...")
+    if bboxes is None or bboxes.shape[0] == 0:
+        logger.warning(
+            "There are no valid objects detected. Skipping current position..."
+        )
         raise ValueError("No objects detected.")
 
     logger.debug(f"Detected {len(bboxes)} objects.")

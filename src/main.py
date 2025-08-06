@@ -70,6 +70,7 @@ def main():
 
             # object detection
             if ctx.config.en.object_detection:
+                logger.info("Starting object detection")
                 try:
                     bboxes = od.object_detection(ctx, logger)
                 except Exception as e:

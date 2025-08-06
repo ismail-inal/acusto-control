@@ -37,14 +37,13 @@ buffer_size = 10
 d_cells = 40
 d_boundary = 10
 
-
 [FILE]
 save_dir = "frames"
 model_path = "model/cell.pt"
-
 
 [EN]
 auto_focus = true
 object_detection = true
 dynamic_exposure = false
 depth = false
+sanitize = true
