@@ -69,7 +69,6 @@ class FileConfig:
 class EnConfig:
     auto_focus: bool
     object_detection: bool
-    dynamic_exposure: bool
     depth: bool
     sanitize: bool
 

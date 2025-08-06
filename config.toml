@@ -44,6 +44,5 @@ model_path = "model/cell.pt"
 [EN]
 auto_focus = true
 object_detection = true
-dynamic_exposure = false
+sanitize = false
 depth = false
-sanitize = true
