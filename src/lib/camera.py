@@ -4,8 +4,6 @@ import numpy as np
 from pypylon import pylon
 from pipython import pitools
 
-import lib.context as ctx
-
 
 def connect_camera(exposure, fps) -> pylon.InstantCamera:
     camera = pylon.InstantCamera(pylon.TlFactory.GetInstance().CreateFirstDevice())
@@ -58,7 +56,7 @@ def save_images(
 
 
 def save_range(
-    ctx: ctx.AppContext,
+    ctx,
     frame_dir: str,
     logger,
 ):
@@ -76,7 +74,7 @@ def save_range(
     return
 
 
-def return_range(ctx: ctx.AppContext, l_pos, r_pos):
+def return_range(ctx, l_pos, r_pos):
     img_arr = []
     pos_range = np.arange(
         l_pos, r_pos + ctx.config.focus.step_finer, ctx.config.focus.step_finer
@@ -89,3 +87,55 @@ def return_range(ctx: ctx.AppContext, l_pos, r_pos):
 
     img_arr = np.array(img_arr)
     return img_arr
+
+
+def reset_camera(ctx, logger):
+    try:
+        logger.info("Resetting camera settings")
+        ctx.camera.OffsetX.Value = 0
+        ctx.camera.OffsetY.Value = 0
+        ctx.camera.Width.Value = ctx.width_max
+        ctx.camera.Height.Value = ctx.height_max
+        logger.info("Camera settings reset.")
+    except Exception as e:
+        logger.critical(f"Error resetting camera settings: {e}")
+        raise e
+
+
+def roi(ctx, logger, bbox, idx):
+    def _adjust(value, increment, max_value):
+        raw_value = int(max(0, value))
+        adjusted_value = raw_value - (raw_value % increment)
+        final_value = min(adjusted_value, max_value)
+        return final_value
+
+    x_min, y_min, x_max, y_max = bbox
+    logger.debug(
+        f"\nProcessing object {idx}: top left corner ({x_min}, {y_min}), bottom right corner({x_max}, {y_max})"
+    )
+
+    try:
+        current_max_offset_x = ctx.camera.OffsetX.GetMax()
+        current_max_offset_y = ctx.camera.OffsetY.GetMax()
+    except Exception as e:
+        logger.error(f"Error fetching camera offsets: {e}")
+        raise e
+
+    adjusted_width = _adjust(abs(x_max - x_min), ctx.width_inc, ctx.width_max)
+    adjusted_height = _adjust(abs(y_max - y_min), ctx.height_inc, ctx.height_max)
+    adjusted_offset_x = _adjust(x_min, ctx.offset_x_inc, current_max_offset_x)
+    adjusted_offset_y = _adjust(y_min, ctx.offset_y_inc, current_max_offset_y)
+
+    try:
+        ctx.camera.Width.Value = adjusted_width
+        ctx.camera.Height.Value = adjusted_height
+        ctx.camera.OffsetX.Value = adjusted_offset_x
+        ctx.camera.OffsetY.Value = adjusted_offset_y
+    except Exception as e:
+        logger.error(f"Error setting camera dimensions/offsets: {e}")
+        raise e
+
+    logger.debug(
+        f"Adjusted camera ROI: Width={ctx.camera.Width.Value}, Height={ctx.camera.Height.Value}, "
+        f"OffsetX={ctx.camera.OffsetX.Value}, OffsetY={ctx.camera.OffsetY.Value}"
+    )

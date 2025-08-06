@@ -10,19 +10,27 @@ from pypylon import genicam
 from lib.context import AppContext
 import lib.camera as cmr
 import lib.focus as fcs
-from lib.object_detection import get_bounding_boxes
+import lib.object_detection as od
 
 
 def main():
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(levelname)s - %(message)s",
-        handlers=[
-            logging.StreamHandler(),
-            logging.FileHandler("acusto_control.log"),
-        ],
-    )
     logger = logging.getLogger(__name__)
+    logger.propagate = False
+
+    if not logger.handlers:
+        stream = logging.StreamHandler()
+        file = logging.FileHandler("control.log")
+
+        formatter = logging.Formatter(
+            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        )
+        stream.setFormatter(formatter)
+        stream.setLevel(logging.INFO)
+        file.setFormatter(formatter)
+        file.setLevel(logging.DEBUG)
+
+        logger.addHandler(stream)
+        logger.addHandler(file)
 
     ctx = AppContext(logger=logger)
 
@@ -57,14 +65,15 @@ def main():
                 )
                 logger.debug("Stage movement complete.")
             except Exception as e:
-                logger.error(f"Error during stage movement: {e}\n")
+                logger.error(f"Error during stage movement: {e}\n", exc_info=True)
                 continue
 
             # object detection
             if ctx.config.en.object_detection:
                 try:
-                    bboxes = object_detection(ctx, logger)
-                except Exception:
+                    bboxes = od.object_detection(ctx, logger)
+                except Exception as e:
+                    logger.error(f"Error during object detection: {e}", exc_info=True)
                     continue
             else:
                 bboxes = [[0, 0, ctx.width_max, ctx.height_max]]
@@ -79,9 +88,11 @@ def main():
                 # roi
                 if ctx.config.en.object_detection:
                     try:
-                        roi(ctx, logger, bbox, idx)
+                        cmr.roi(ctx, logger, bbox, idx)
                     except Exception as e:
-                        logger.error(f"Error processing object {idx}: {e}")
+                        logger.error(
+                            f"Error processing object {idx}: {e}", exc_info=True
+                        )
                         continue
 
                 # focus
@@ -90,7 +101,7 @@ def main():
                         logger.info("Adjusting focus...")
                         fcs.autofocus_golden(ctx, fcs.measure_std_dev)
                     except Exception as e:
-                        logger.error(f"Error during focusing: {e}")
+                        logger.error(f"Error during focusing: {e}", exc_info=True)
 
                 # image capture
                 logger.info("Starting image capture...")
@@ -104,8 +115,9 @@ def main():
 
                 # resetting camera settings
                 try:
-                    reset_camera(ctx, logger)
-                except Exception as _:
+                    cmr.reset_camera(ctx, logger)
+                except Exception as e:
+                    logger.fatal(f"Could not reset camera: {e}", exc_info=True)
                     ctx.camera.Close()
                     ctx.pidevice.CloseConnection()
                     sys.exit(1)
@@ -114,89 +126,14 @@ def main():
     try:
         ctx.pidevice.CloseConnection()
     except Exception as e:
-        logger.error(f"Error closing motor controller connection: {e}")
+        logger.error(f"Error closing motor controller connection: {e}", exc_info=True)
 
     try:
         ctx.camera.Close()
     except genicam.GenericException as e:
-        logger.error(f"Error closing camera connection: {e}")
+        logger.error(f"Error closing camera connection: {e}", exc_info=True)
 
     logger.info("Process complete.")
-
-
-def adjust(value, increment, max_value):
-    raw_value = int(max(0, value))
-    adjusted_value = raw_value - (raw_value % increment)
-    final_value = min(adjusted_value, max_value)
-    return final_value
-
-
-def object_detection(ctx: AppContext, logger):
-    logger.info("Capturing original image...")
-    temp_dir = os.path.join(ctx.config.file.save_dir, "temp")
-    try:
-        cmr.save_images(ctx.camera, 1, temp_dir, logger)
-    except Exception as e:
-        logger.error(f"Error capturing image: {e}")
-        raise e
-
-    logger.info("Detecting objects...")
-    temp_file = os.path.join(temp_dir, "0.tiff")
-    bboxes = get_bounding_boxes(ctx, temp_file)
-
-    if bboxes is None:
-        logger.warning("There are no objects detected. Skipping current position...")
-        raise ValueError("No objects detected.")
-
-    logger.debug(f"Detected {len(bboxes)} objects.")
-
-    return bboxes
-
-
-def roi(ctx, logger, bbox, idx):
-    x_min, y_min, x_max, y_max = bbox
-    logger.debug(
-        f"\nProcessing object {idx}: top left corner ({x_min}, {y_min}), bottom right corner({x_max}, {y_max})"
-    )
-
-    try:
-        current_max_offset_x = ctx.camera.OffsetX.GetMax()
-        current_max_offset_y = ctx.camera.OffsetY.GetMax()
-    except Exception as e:
-        logger.error(f"Error fetching camera offsets: {e}")
-        raise e
-
-    adjusted_width = adjust(abs(x_max - x_min), ctx.width_inc, ctx.width_max)
-    adjusted_height = adjust(abs(y_max - y_min), ctx.height_inc, ctx.height_max)
-    adjusted_offset_x = adjust(x_min, ctx.offset_x_inc, current_max_offset_x)
-    adjusted_offset_y = adjust(y_min, ctx.offset_y_inc, current_max_offset_y)
-
-    try:
-        ctx.camera.Width.Value = adjusted_width
-        ctx.camera.Height.Value = adjusted_height
-        ctx.camera.OffsetX.Value = adjusted_offset_x
-        ctx.camera.OffsetY.Value = adjusted_offset_y
-    except Exception as e:
-        logger.error(f"Error setting camera dimensions/offsets: {e}")
-        raise e
-
-    logger.debug(
-        f"Adjusted camera ROI: Width={ctx.camera.Width.Value}, Height={ctx.camera.Height.Value}, "
-        f"OffsetX={ctx.camera.OffsetX.Value}, OffsetY={ctx.camera.OffsetY.Value}"
-    )
-
-
-def reset_camera(ctx, logger):
-    try:
-        logger.info("Resetting camera settings")
-        ctx.camera.OffsetX.Value = 0
-        ctx.camera.OffsetY.Value = 0
-        ctx.camera.Width.Value = ctx.width_max
-        ctx.camera.Height.Value = ctx.height_max
-        logger.info("Camera settings reset.")
-    except Exception as e:
-        logger.critical(f"Error resetting camera settings: {e}")
-        raise e
 
 
 def cleanup(signum, frame, *, camera, width_max, height_max, pidevice, logger):
@@ -208,11 +145,11 @@ def cleanup(signum, frame, *, camera, width_max, height_max, pidevice, logger):
         camera.Height.Value = height_max
         camera.Close()
     except Exception as e:
-        logger.error(f"Error resetting/closing camera: {e}")
+        logger.error(f"Error resetting/closing camera: {e}", exc_info=True)
     try:
         pidevice.CloseConnection()
     except Exception as e:
-        logger.error(f"Error closing motor controller: {e}")
+        logger.error(f"Error closing motor controller: {e}", exc_info=True)
     sys.exit(0)
 
 

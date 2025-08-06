@@ -40,7 +40,7 @@ d_boundary = 10
 
 [FILE]
 save_dir = "frames"
-model_path = "models/cell.pt"
+model_path = "model/cell.pt"
 
 
 [EN]

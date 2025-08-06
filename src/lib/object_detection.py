@@ -1,8 +1,10 @@
 from typing import Optional
+import os
 
 import numpy as np
 
 import lib.context as ctx
+import lib.camera as cmr
 
 
 def get_bounding_boxes(ctx: ctx.AppContext, img_path: str) -> Optional[np.ndarray]:
@@ -47,9 +49,8 @@ def sanitize_mask(bboxes, ctx: ctx.AppContext):
             keep[i] = False
             continue
 
-        cx_1, cy_1 = (
-            (org_bbox[0] + org_bbox[2]) // 2,
-            (org_bbox[1] + org_bbox[3]) // 2,
+        pt1 = np.array(
+            [(org_bbox[0] + org_bbox[2]) // 2, (org_bbox[1] + org_bbox[3]) // 2]
         )
 
         for j in range(i + 1, n):
@@ -71,13 +72,35 @@ def sanitize_mask(bboxes, ctx: ctx.AppContext):
                 keep[j] = False
                 continue
 
-            cx_2, cy_2 = (
-                (comp_bbox[0] + comp_bbox[2]) // 2,
-                (comp_bbox[1] + comp_bbox[3]) // 2,
+            pt2 = np.array(
+                [(comp_bbox[0] + comp_bbox[2]) // 2, (comp_bbox[1] + comp_bbox[3]) // 2]
             )
-            dist = np.sqrt((cx_1 - cx_2) ** 2 + (cy_1 - cy_2) ** 2)
+
+            dist = np.linalg.norm(pt1 - pt2)
 
             if dist < ctx.config.od.d_cells:
-                keep[i] = False
+                keep[j] = False
 
     return bboxes[keep]
+
+
+def object_detection(ctx: ctx.AppContext, logger):
+    logger.info("Capturing original image...")
+    temp_dir = os.path.join(ctx.config.file.save_dir, "temp")
+    try:
+        cmr.save_images(ctx.camera, 1, temp_dir, logger)
+    except Exception as e:
+        logger.error(f"Error capturing image: {e}")
+        raise e
+
+    logger.info("Detecting objects...")
+    temp_file = os.path.join(temp_dir, "0.tiff")
+    bboxes = get_bounding_boxes(ctx, temp_file)
+
+    if bboxes is None:
+        logger.warning("There are no objects detected. Skipping current position...")
+        raise ValueError("No objects detected.")
+
+    logger.debug(f"Detected {len(bboxes)} objects.")
+
+    return bboxes
