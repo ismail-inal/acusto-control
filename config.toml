@@ -34,7 +34,7 @@ step_num = 1
 
 [OD]
 buffer_size = 10
-d_cell = 40
+d_cells = 40
 d_boundary = 10
 
 

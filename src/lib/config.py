@@ -57,7 +57,6 @@ class MovementConfig:
     z_max_step: int
     x_step_num: int
     y_step_num: int
-    rot_angle: float
 
 
 @dataclass

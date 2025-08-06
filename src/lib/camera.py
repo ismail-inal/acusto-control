@@ -7,13 +7,13 @@ from pipython import pitools
 import lib.context as ctx
 
 
-def connect_camera(config) -> pylon.InstantCamera:
+def connect_camera(exposure, fps) -> pylon.InstantCamera:
     camera = pylon.InstantCamera(pylon.TlFactory.GetInstance().CreateFirstDevice())
     camera.Open()
-    camera.MaxNumBuffer.Value = config.buffer_val
-    camera.ExposureTime.Value = config.exposure
+    # camera.MaxNumBuffer.Value = config.buffer_val
+    camera.ExposureTime.Value = exposure
     camera.AcquisitionFrameRateEnable.Value = True
-    camera.AcquisitionFrameRate.Value = config.frame_rate
+    camera.AcquisitionFrameRate.Value = fps
     return camera
 
 

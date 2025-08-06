@@ -40,7 +40,9 @@ class AppContext:
     def _connect_camera(self):
         try:
             self.logger.info("Connecting to the camera...")
-            self.camera = cmr.connect_camera(self.config)
+            self.camera = cmr.connect_camera(
+                self.config.camera.exposure, self.config.camera.fps
+            )
         except Exception as e:
             self.logger.critical(
                 f"Could not connect to the camera: {e}\nTerminating operation."
