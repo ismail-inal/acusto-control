@@ -2,6 +2,7 @@ import numpy as np
 
 from lib.camera import return_range
 import lib.context as ctx
+from pipython import pitools
 from scipy.optimize import golden
 
 RAD = 40
@@ -68,8 +69,10 @@ def autofocus_golden(ctx: ctx.AppContext, score_func, tol=None):
     tol = tol if tol is not None else step
 
     best_pos = golden(wrapped_func, brack=(z_min, z_max), tol=tol)
+    best_pos = round(best_pos / step) * step
 
-    return best_pos
+    ctx.pidevice.MOV(ctx.config.axes.z, best_pos)
+    pitools.waitontarget(ctx.pidevice, ctx.config.axes.z)
 
 
 def autofocus_hill_climbing(ctx: ctx.AppContext, func):
@@ -117,8 +120,10 @@ def autofocus_hill_climbing(ctx: ctx.AppContext, func):
             or next_pos < ctx.config.focus.z_min
             or cached_get_avg(next_pos) > cached_get_avg(current_pos)
         ):
-            return current_pos
+            break
         current_pos = next_pos
+    ctx.pidevice.MOV(ctx.config.axes.z, current_pos)
+    pitools.waitontarget(ctx.pidevice, ctx.config.axes.z)
 
     # Might return back to starting idx
     # ctx.pidevice.MOV(ctx.config.axes.z, starting_pos)
