@@ -15,6 +15,7 @@ import lib.object_detection as od
 
 def main():
     logger = logging.getLogger(__name__)
+    logger.setLevel(logging.DEBUG)
     logger.propagate = False
 
     if not logger.handlers:
