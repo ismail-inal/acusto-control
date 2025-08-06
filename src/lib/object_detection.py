@@ -79,6 +79,5 @@ def sanitize_mask(bboxes, ctx: ctx.AppContext):
 
             if dist < ctx.config.od.d_cells:
                 keep[i] = False
-                keep[j] = False
 
     return bboxes[keep]
