@@ -1,17 +1,13 @@
 from typing import Optional
-import os
-import cv2
 
 import numpy as np
 
-import lib.context as ctx
 import lib.camera as cmr
+import lib.context as ctx
 
 
-def get_bounding_boxes(ctx: ctx.AppContext, img_path: str) -> Optional[np.ndarray]:
-    img = cv2.imread(img_path)
-    img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
-    results = ctx.model(img, conf=0.7)
+def get_bounding_boxes(ctx: ctx.AppContext, img: np.ndarray) -> Optional[np.ndarray]:
+    results = ctx.model(img)
     bboxes = results[0].boxes.xyxy
 
     if bboxes.shape[0] == 0:
@@ -84,6 +80,7 @@ def sanitize_mask(bboxes, ctx: ctx.AppContext):
             dist = np.linalg.norm(pt1 - pt2)
 
             if dist < ctx.config.od.d_cells:
+                keep[i] = False
                 keep[j] = False
 
     return bboxes[keep]
@@ -91,16 +88,14 @@ def sanitize_mask(bboxes, ctx: ctx.AppContext):
 
 def object_detection(ctx: ctx.AppContext, logger):
     logger.info("Capturing original image...")
-    temp_dir = os.path.join(ctx.config.file.save_dir, "temp")
     try:
-        cmr.save_images(ctx.camera, 1, temp_dir, logger)
+        od_img = cmr.return_image(ctx.camera)
     except Exception as e:
         logger.error(f"Error capturing image: {e}")
         raise e
 
     logger.info("Detecting objects...")
-    temp_file = os.path.join(temp_dir, "0.tiff")
-    bboxes = get_bounding_boxes(ctx, temp_file)
+    bboxes = get_bounding_boxes(ctx, od_img)
 
     if bboxes is None or bboxes.shape[0] == 0:
         logger.warning(

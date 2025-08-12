@@ -104,7 +104,7 @@ def reset_camera(ctx, logger):
 
 def roi(ctx, logger, bbox, idx):
     def _adjust(value, increment, max_value):
-        raw_value = int(max(0, value))
+        raw_value = int(max(increment, value))
         adjusted_value = raw_value - (raw_value % increment)
         final_value = min(adjusted_value, max_value)
         return final_value
@@ -114,6 +114,16 @@ def roi(ctx, logger, bbox, idx):
         f"\nProcessing object {idx}: top left corner ({x_min}, {y_min}), bottom right corner({x_max}, {y_max})"
     )
 
+    adjusted_width = _adjust(abs(x_max - x_min), ctx.width_inc, ctx.width_max)
+    adjusted_height = _adjust(abs(y_max - y_min), ctx.height_inc, ctx.height_max)
+
+    try:
+        ctx.camera.Width.Value = adjusted_width
+        ctx.camera.Height.Value = adjusted_height
+    except Exception as e:
+        logger.error(f"Error setting camera dimensions: {e}")
+        raise e
+
     try:
         current_max_offset_x = ctx.camera.OffsetX.GetMax()
         current_max_offset_y = ctx.camera.OffsetY.GetMax()
@@ -121,18 +131,14 @@ def roi(ctx, logger, bbox, idx):
         logger.error(f"Error fetching camera offsets: {e}")
         raise e
 
-    adjusted_width = _adjust(abs(x_max - x_min), ctx.width_inc, ctx.width_max)
-    adjusted_height = _adjust(abs(y_max - y_min), ctx.height_inc, ctx.height_max)
     adjusted_offset_x = _adjust(x_min, ctx.offset_x_inc, current_max_offset_x)
     adjusted_offset_y = _adjust(y_min, ctx.offset_y_inc, current_max_offset_y)
 
     try:
-        ctx.camera.Width.Value = adjusted_width
-        ctx.camera.Height.Value = adjusted_height
         ctx.camera.OffsetX.Value = adjusted_offset_x
         ctx.camera.OffsetY.Value = adjusted_offset_y
     except Exception as e:
-        logger.error(f"Error setting camera dimensions/offsets: {e}")
+        logger.error(f"Error setting camera offsets: {e}")
         raise e
 
     logger.debug(
