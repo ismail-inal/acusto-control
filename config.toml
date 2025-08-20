@@ -25,8 +25,8 @@ dz = 0.00025
 z_max_step = 150
 
 [FOCUS]
-z_min = 1.33300
-z_max = 2.5000
+z_min = 2.35
+z_max = 2.5
 step_coarse = 30
 step_fine = 20
 step_finer = 10
@@ -43,7 +43,7 @@ model_path = "model/cell.pt"
 
 
 [EN]
-auto_focus = false
-object_detection = false
-sanitize = false
+auto_focus = true
+object_detection = true
+sanitize = true
 depth = false

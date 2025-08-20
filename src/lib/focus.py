@@ -3,7 +3,7 @@ import numpy as np
 from lib.camera import return_range
 import lib.context as ctx
 from pipython import pitools
-from scipy.optimize import golden
+from scipy.optimize import minimize_scalar
 
 RAD = 40
 
@@ -49,7 +49,7 @@ def get_avg(pos, ctx: ctx.AppContext, func):
     return np.mean(scores) if len(scores) > 0 else np.inf
 
 
-def autofocus_golden(ctx: ctx.AppContext, score_func):
+def autofocus_scipy(ctx: ctx.AppContext, score_func):
     step = ctx.config.focus.step_finer
     z_min = ctx.config.focus.z_min
     z_max = ctx.config.focus.z_max
@@ -66,7 +66,9 @@ def autofocus_golden(ctx: ctx.AppContext, score_func):
         cache[quant_pos] = val
         return val
 
-    best_pos = golden(wrapped_func, brack=(z_min, z_max))
+    best_pos = minimize_scalar(
+        wrapped_func, (ctx.config.focus.z_min, ctx.config.focus.z_max), method="bounded"
+    )
     best_pos = best_pos - (best_pos % step)
 
     ctx.pidevice.MOV(ctx.config.axes.z, best_pos)
