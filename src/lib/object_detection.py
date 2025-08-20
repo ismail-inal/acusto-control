@@ -7,7 +7,7 @@ import lib.context as ctx
 
 
 def get_bounding_boxes(ctx: ctx.AppContext, img: np.ndarray) -> Optional[np.ndarray]:
-    results = ctx.model(img)
+    results = ctx.model(img, conf=0.15)
     bboxes = results[0].boxes.xyxy
 
     if bboxes.shape[0] == 0:

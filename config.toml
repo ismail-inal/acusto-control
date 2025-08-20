@@ -1,7 +1,7 @@
 [CAMERA]
-exposure = 40.0
+exposure = 500.0
 fps = 50.0
-img_num = 200
+img_num = 1
 
 [MOTOR]
 controllername = "C-884.DB"
@@ -10,13 +10,13 @@ refmodes = ["FNL", "FRF"]
 serialnum = "0000000000"
 
 [AXES]
-x = 1
-y = 2
+x = 2
+y = 1
 z = 3
 
 [VERTEX]
-pt1 = [11.0, 1.0]
-pt2 = [14.5, 5.0]
+pt1 = [11.0, 2.0]
+pt2 = [14.0, 4.0]
 
 [MOVEMENT]
 dx = 0.3
@@ -25,8 +25,8 @@ dz = 0.00025
 z_max_step = 150
 
 [FOCUS]
-z_min = 2.35
-z_max = 2.5
+z_min = 2.75
+z_max = 2.85
 step_coarse = 30
 step_fine = 20
 step_finer = 10
@@ -38,7 +38,7 @@ d_cells = 40
 d_boundary = 10
 
 [FILE]
-save_dir = "./output"
+save_dir = "/run/media/ayibogan/optik_drive/cell_viability/data/deneme"
 model_path = "model/cell.pt"
 
 
