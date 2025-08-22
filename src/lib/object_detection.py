@@ -90,6 +90,7 @@ def object_detection(ctx: ctx.AppContext, logger):
     logger.info("Capturing original image...")
     try:
         od_img = cmr.return_image(ctx.camera)
+        od_img = np.stack([od_img] * 3, axis=-1)
     except Exception as e:
         logger.error(f"Error capturing image: {e}")
         raise e

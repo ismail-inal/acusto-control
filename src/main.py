@@ -74,6 +74,12 @@ def main():
                 logger.info("Starting object detection")
                 try:
                     bboxes = od.object_detection(ctx, logger)
+                except ValueError as e:
+                    if str(e) == "No objects detected.":
+                        continue
+                    else:
+                        logger.error(f"Error during object detection: {e}")
+                        continue
                 except Exception as e:
                     logger.error(f"Error during object detection: {e}")
                     continue
@@ -101,7 +107,7 @@ def main():
                 if ctx.config.en.auto_focus:
                     try:
                         logger.info("Adjusting focus...")
-                        fcs.autofocus_golden(ctx, fcs.measure_std_dev)
+                        fcs.autofocus_scipy(ctx, fcs.measure_std_dev)
                     except Exception as e:
                         logger.error(f"Error during focusing: {e}", exc_info=True)
 

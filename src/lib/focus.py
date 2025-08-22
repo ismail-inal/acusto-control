@@ -1,6 +1,6 @@
 import numpy as np
 
-from lib.camera import return_range
+from lib.camera import return_image, return_range
 import lib.context as ctx
 from pipython import pitools
 from scipy.optimize import minimize_scalar
@@ -15,12 +15,6 @@ def measure_std_dev(img):
     cy, cx = height // 2, width // 2
     y, x = np.ogrid[:height, :width]
     dist_sq = (y - cy) ** 2 + (x - cx) ** 2
-
-    # signal = np.abs(f[cy, cx:])
-    # smoothed_signal = gaussian_filter1d(signal, sigma=2.0)
-    # derivative = np.gradient(smoothed_signal)
-    # rad = find_valley_index(derivative, 0) + 10
-
     f[(dist_sq > RAD**2)] = 0
 
     F = np.fft.ifft2(np.fft.ifftshift(f))
@@ -28,7 +22,7 @@ def measure_std_dev(img):
     return std_dev
 
 
-def get_avg(pos, ctx: ctx.AppContext, func):
+def get_score_avg(pos, ctx: ctx.AppContext, func):
     l_pos = max(
         ctx.config.focus.z_min,
         pos - ctx.config.focus.step_num * ctx.config.focus.step_finer,
@@ -49,29 +43,29 @@ def get_avg(pos, ctx: ctx.AppContext, func):
     return np.mean(scores) if len(scores) > 0 else np.inf
 
 
+def get_score(pos, ctx: ctx.AppContext, func):
+    ctx.pidevice.MOV(ctx.config.axes.z, pos)
+    pitools.waitontarget(ctx.pidevice, ctx.config.axes.z)
+
+    img = return_image(ctx.camera)
+    score = func(img)
+    return score
+
+
 def autofocus_scipy(ctx: ctx.AppContext, score_func):
     step = ctx.config.focus.step_finer
     z_min = ctx.config.focus.z_min
     z_max = ctx.config.focus.z_max
 
-    cache = {}
-
     def wrapped_func(pos):
         quant_pos = pos - (pos % step)
-
-        if quant_pos in cache:
-            return cache[quant_pos]
-
-        val = get_avg(quant_pos, ctx, score_func)
-        cache[quant_pos] = val
+        val = get_score(quant_pos, ctx, score_func)
         return val
 
-    best_pos = minimize_scalar(
-        wrapped_func, (ctx.config.focus.z_min, ctx.config.focus.z_max), method="bounded"
-    )
-    best_pos = best_pos - (best_pos % step)
+    best_pos = minimize_scalar(wrapped_func, bounds=(z_min, z_max), method="bounded")
+    found_pos = best_pos.x - (best_pos.x % step)
 
-    ctx.pidevice.MOV(ctx.config.axes.z, best_pos)
+    ctx.pidevice.MOV(ctx.config.axes.z, found_pos)
     pitools.waitontarget(ctx.pidevice, ctx.config.axes.z)
 
 
@@ -80,7 +74,7 @@ def autofocus_hill_climbing(ctx: ctx.AppContext, func):
 
     def cached_get_avg(pos):
         if pos not in focus_cache:
-            focus_cache[pos] = get_avg(pos, ctx, func)
+            focus_cache[pos] = get_score_avg(pos, ctx, func)
         return focus_cache[pos]
 
     starting_pos = ctx.pidevice.qPOS(ctx.config.axes.z)[ctx.config.axes.z]
@@ -124,7 +118,3 @@ def autofocus_hill_climbing(ctx: ctx.AppContext, func):
         current_pos = next_pos
     ctx.pidevice.MOV(ctx.config.axes.z, current_pos)
     pitools.waitontarget(ctx.pidevice, ctx.config.axes.z)
-
-    # Might return back to starting idx
-    # ctx.pidevice.MOV(ctx.config.axes.z, starting_pos)
-    # pitools.waitontarget(ctx.pidevice, ctx.config.axes.z)
